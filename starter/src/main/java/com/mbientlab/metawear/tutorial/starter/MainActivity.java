@@ -13,7 +13,6 @@ import android.os.Bundle;
 import com.mbientlab.bletoolbox.scanner.BleScannerFragment;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.module.Accelerometer;
 
 import java.util.UUID;
 
@@ -108,10 +107,6 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         serviceBinder = (BtleService.LocalBinder) service;
-        Accelerometer accelerometer = metawear.getModule(Accelerometer.class);
-        accelerometer.configure()
-                .odr(50f)       // Set sampling frequency to 25Hz, or closest valid ODR
-                .commit();
     }
 
     @Override
