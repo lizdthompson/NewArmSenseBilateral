@@ -110,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements BleScannerFragmen
         serviceBinder = (BtleService.LocalBinder) service;
         Accelerometer accelerometer = metawear.getModule(Accelerometer.class);
         accelerometer.configure()
-                .odr(25f)       // Set sampling frequency to 25Hz, or closest valid ODR
+                .odr(50f)       // Set sampling frequency to 25Hz, or closest valid ODR
                 .commit();
     }
 
