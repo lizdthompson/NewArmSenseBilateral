@@ -31,6 +31,7 @@
 
 package com.mbientlab.metawear.tutorial.starter;
 
+
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.content.ComponentName;
@@ -70,7 +71,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private MetaWearBoard metawear = null;
     private FragmentSettings settings;
     private Accelerometer accelerometer;
-    private GyroBmi160 gyroBmi160;
+    private GyroBmi160 gyroscope;
 
 
     public DeviceSetupActivityFragment() {
@@ -118,7 +119,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
                                 // display acc data in Logcat in Android Studio
                                 Log.i("MainActivity", data.value(Acceleration.class).toString());
-                                Log.i("MainActivity", data.value(GyroBmi160.class).toString());
                             }
                         });
                     }
@@ -128,18 +128,38 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                     public Void then(Task<Route> task) throws Exception {
                         accelerometer.acceleration().start();
                         accelerometer.start();
-                        gyroBmi160.start();
+                        return null;
+                    }
+                });
+                gyroscope.angularVelocity().addRouteAsync(new RouteBuilder() {
+                    @Override
+                    public void configure(RouteComponent source) {
+                        source.stream(new Subscriber() {
+                            @Override
+                            public void apply(Data data, Object... env) {
+                                Log.i("MainActivity", data.value(GyroBmi160.class).toString());
+
+                            }
+                        });
+                    }
+                }).continueWith(new Continuation<Route, Void>() {
+                    @Override
+                    public Void then(Task<Route> task) throws Exception {
+                        gyroscope.angularVelocity().start();
+                        gyroscope.start();
                         return null;
                     }
                 });
             }
         });
+
         view.findViewById(R.id.acc_stop).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 accelerometer.stop();
                 accelerometer.acceleration().stop();
-                gyroBmi160.stop();
+                gyroscope.stop();
+                gyroscope.angularVelocity().stop();
                 metawear.tearDown();
             }
         });
@@ -153,9 +173,9 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         accelerometer.configure()
                 .odr(50f)       // Set sampling frequency to 25Hz, or closest valid ODR
                 .commit();
-            gyroBmi160 = metawear.getModule(GyroBmi160.class);
-            gyroBmi160.configure()
-                    .commit();
+        gyroscope = metawear.getModule(GyroBmi160.class);
+        gyroscope.configure()
+                .commit();
     }
 
     @Override
