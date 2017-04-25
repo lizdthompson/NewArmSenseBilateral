@@ -57,4 +57,5 @@ dependencies {
     compile 'com.mbientlab.bletoolbox:scanner:0.2.3'
     compile 'com.android.support:appcompat-v7:25.2.0'
     compile 'com.android.support:design:25.2.0'
+    compile 'com.mbientlab:metawear:2.4.0'
 }

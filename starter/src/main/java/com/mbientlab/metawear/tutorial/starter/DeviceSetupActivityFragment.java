@@ -47,14 +47,19 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.mbientlab.metawear.Data;
+import com.mbientlab.metawear.data.Acceleration;
+import com.mbientlab.metawear.data.AngularVelocity;
+
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+
 import com.mbientlab.metawear.builder.RouteBuilder;
 import com.mbientlab.metawear.builder.RouteComponent;
-import com.mbientlab.metawear.data.Acceleration;
+
 import com.mbientlab.metawear.module.Accelerometer;
+//import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.GyroBmi160;
 
 import bolts.Continuation;
@@ -72,7 +77,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private FragmentSettings settings;
     private Accelerometer accelerometer;
     private GyroBmi160 gyroscope;
-
 
     public DeviceSetupActivityFragment() {
     }
@@ -137,8 +141,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         source.stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                Log.i("MainActivity", data.value(GyroBmi160.class).toString());
-
+                                Log.i("MainActivity", data.value(AngularVelocity.class).toString());
                             }
                         });
                     }
