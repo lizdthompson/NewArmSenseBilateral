@@ -66,8 +66,12 @@ import com.mbientlab.metawear.module.Debug;
 import bolts.Continuation;
 import bolts.Task;
 
-import java.io.FileOutputStream;
 import java.io.File;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.FileOutputStream;
+
 
 /**
  * A placeholder fragment containing a simple view.
@@ -83,9 +87,11 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private GyroBmi160 gyroscope;
     private Debug debugModule;
 
-    private String filename = "MySampleFile.txt";
+    private String filename = "myfile.txt";
     private String filepath = "MyFileStorage";
     File myInternalFile;
+    StringBuffer dataconcat;
+    FileOutputStream outputStream;
 
     public DeviceSetupActivityFragment() {
     }
@@ -127,6 +133,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
         view.findViewById(R.id.acc_start).setOnClickListener(new View.OnClickListener(){
 
             @Override
@@ -139,6 +146,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
                                 String accel_entry = data.value(Acceleration.class).toString();
                                 Log.i("MainActivity", accel_entry.toString());
+                                dataconcat.append(accel_entry);
                             }
                         });
                     }
@@ -159,6 +167,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
                                 String gyro_entry = data.value(AngularVelocity.class).toString();
                                 Log.i("MainActivity", gyro_entry.toString());
+                                dataconcat.append(gyro_entry);
                             }
                         });
                     }
@@ -170,6 +179,9 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         return null;
                     }
                 });
+
+
+
             }
         });
 
@@ -194,11 +206,29 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try{
-                    FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
-                    fileOutputStream.write();
+                    try {
+                        FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
+                        fileOutputStream.write();
+                        fileOutputStream.close();
+                        //File f=new File("c:writeContentfile.txt");
+                        //FileWriter fileWriter = new FileWriter(f);
+                        //BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+                        //bufferedWriter.write(dataconcat.toString());
+                        //bufferedWriter.close();
+                    }
+                    catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+
+                //BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(new File(myInternalFile)));
+                    //bufferedWriter.write(dataconcat.toString());
                 }
-            }
+
+                    //FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
+                    //fileOutputStream.write(dataconcat);
+
+
         });
     }
 
