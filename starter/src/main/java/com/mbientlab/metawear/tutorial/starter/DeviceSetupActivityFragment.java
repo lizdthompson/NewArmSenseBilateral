@@ -36,6 +36,7 @@ import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
@@ -59,11 +60,14 @@ import com.mbientlab.metawear.builder.RouteBuilder;
 import com.mbientlab.metawear.builder.RouteComponent;
 
 import com.mbientlab.metawear.module.Accelerometer;
-//import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.GyroBmi160;
+import com.mbientlab.metawear.module.Debug;
 
 import bolts.Continuation;
 import bolts.Task;
+
+import java.io.FileOutputStream;
+import java.io.File;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -77,6 +81,11 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private FragmentSettings settings;
     private Accelerometer accelerometer;
     private GyroBmi160 gyroscope;
+    private Debug debugModule;
+
+    private String filename = "MySampleFile.txt";
+    private String filepath = "MyFileStorage";
+    File myInternalFile;
 
     public DeviceSetupActivityFragment() {
     }
@@ -92,6 +101,13 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
         settings= (FragmentSettings) owner;
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
+
+        ContextWrapper contextWrapper = new ContextWrapper(owner.getApplicationContext());
+        File directory = contextWrapper.getDir(filepath,Context.MODE_PRIVATE);
+        if(!directory.exists()){
+            directory.mkdir();
+        }
+        myInternalFile = new File(directory,filename);
     }
 
     @Override
@@ -121,8 +137,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         source.stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                // display acc data in Logcat in Android Studio
-                                Log.i("MainActivity", data.value(Acceleration.class).toString());
+                                String accel_entry = data.value(Acceleration.class).toString();
+                                Log.i("MainActivity", accel_entry.toString());
                             }
                         });
                     }
@@ -141,7 +157,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         source.stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                Log.i("MainActivity", data.value(AngularVelocity.class).toString());
+                                String gyro_entry = data.value(AngularVelocity.class).toString();
+                                Log.i("MainActivity", gyro_entry.toString());
                             }
                         });
                     }
@@ -164,6 +181,23 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                 gyroscope.stop();
                 gyroscope.angularVelocity().stop();
                 metawear.tearDown();
+            }
+        });
+
+        view.findViewById(R.id.sens_reset).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                debugModule.resetAsync();
+            }
+        });
+
+        view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try{
+                    FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
+                    fileOutputStream.write();
+                }
             }
         });
     }
@@ -190,4 +224,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
      * Called when the app has reconnected to the board
      */
     public void reconnected() { }
+
+
 }
