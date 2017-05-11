@@ -68,6 +68,7 @@ import bolts.Task;
 
 import java.io.File;
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.FileOutputStream;
@@ -166,7 +167,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             @Override
                             public void apply(Data data, Object... env) {
                                 String gyro_entry = data.value(AngularVelocity.class).toString();
-                                Log.i("MainActivity", gyro_entry.toString());
+                                Log.i("MainActivity", gyro_entry);
                                 dataconcat.append(gyro_entry);
                             }
                         });
@@ -179,9 +180,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         return null;
                     }
                 });
-
-
-
             }
         });
 
@@ -210,36 +208,22 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
                         fileOutputStream.write();
                         fileOutputStream.close();
-                        //File f=new File("c:writeContentfile.txt");
-                        //FileWriter fileWriter = new FileWriter(f);
-                        //BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-                        //bufferedWriter.write(dataconcat.toString());
-                        //bufferedWriter.close();
                     }
                     catch (IOException e) {
                         e.printStackTrace();
                     }
-
-
-                //BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(new File(myInternalFile)));
-                    //bufferedWriter.write(dataconcat.toString());
                 }
-
-                    //FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
-                    //fileOutputStream.write(dataconcat);
-
-
         });
     }
-
 
         @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         metawear = ((BtleService.LocalBinder) service).getMetaWearBoard(settings.getBtDevice());
         accelerometer = metawear.getModule(Accelerometer.class);
         accelerometer.configure()
-                .odr(50f)       // Set sampling frequency to 25Hz, or closest valid ODR
+                .odr(50f)      // set sampling frequency
                 .commit();
+
         gyroscope = metawear.getModule(GyroBmi160.class);
         gyroscope.configure()
                 .commit();
