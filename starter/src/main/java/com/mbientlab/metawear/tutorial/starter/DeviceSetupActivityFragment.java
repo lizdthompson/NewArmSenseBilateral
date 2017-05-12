@@ -66,12 +66,16 @@ import com.mbientlab.metawear.module.Debug;
 import bolts.Continuation;
 import bolts.Task;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
+
+import android.os.Environment;
 
 
 /**
@@ -88,11 +92,17 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private GyroBmi160 gyroscope;
     private Debug debugModule;
 
-    private String filename = "myfile.txt";
-    private String filepath = "MyFileStorage";
+    private String filename = "myfile";
+    //private String filepath = "MyFileStorage";
+
+    public boolean available;
+
+    String string = "Hello world!";
+
     File myInternalFile;
-    StringBuffer dataconcat;
-    FileOutputStream outputStream;
+    //StringBuffer dataconcat;
+
+    //FileOutputStream outputStream;
 
     public DeviceSetupActivityFragment() {
     }
@@ -109,13 +119,55 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         settings= (FragmentSettings) owner;
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
 
-        ContextWrapper contextWrapper = new ContextWrapper(owner.getApplicationContext());
-        File directory = contextWrapper.getDir(filepath,Context.MODE_PRIVATE);
-        if(!directory.exists()){
-            directory.mkdir();
+        //ContextWrapper contextWrapper = new ContextWrapper(owner.getApplicationContext());
+        //File directory = contextWrapper.getDir(filepath,Context.MODE_PRIVATE);
+        //if(!directory.exists()){
+        //    directory.mkdir();
+        //}
+        //myInternalFile = new File(directory,filename);
+        //Log.i("MainActivity","HELLO WORLD");
+
+        Context ctx = owner.getApplicationContext();
+
+        String state = Environment.getExternalStorageState();
+            if (Environment.MEDIA_MOUNTED.equals(state)) {
+
+                available = true;
+                Log.i("MainActivity", "External storage available, yay!");
+            }
+            else{
+                available = false;
+                Log.i("MainActivity", "External storage not available :(");
+            }
+        File file = new File(ctx.getExternalFilesDir(null),filename);
+
+        try {
+            OutputStream os = new FileOutputStream(file);
+            os.write(string.getBytes());
+            os.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        myInternalFile = new File(directory,filename);
+
+
+
+        //File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),filename);
+
+
+
+        //try {
+        //    outputStream = ctx.openFileOutput(filename, Context.MODE_APPEND);
+       //     //File file = new File(ctx.getFilesDir(),filename);
+        //    outputStream.write(string.getBytes());
+        //    outputStream.close();
+       //     Log.i("MainActivity","HELLO WORLD - 2");
+       // } catch (Exception e) {
+       //     Log.i("MainActivity","HELLO WORLD - 3");
+      //     e.printStackTrace();
+      //  }
     }
+
+
 
     @Override
     public void onDestroy() {
@@ -147,7 +199,17 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
                                 String accel_entry = data.value(Acceleration.class).toString();
                                 Log.i("MainActivity", accel_entry.toString());
-                                dataconcat.append(accel_entry);
+                                //dataconcat.append(accel_entry);
+                                String csv_accel_entry = accel_entry + ",";
+                                OutputStream outputStream;
+                                try {
+                                    outputStream = new BufferedOutputStream(new FileOutputStream(myInternalFile, true));
+                                    outputStream.write(csv_accel_entry.getBytes());
+                                    outputStream.write("\n".getBytes());
+                                    outputStream.close();
+                                } catch (Exception e) {
+                                    Log.e("MainActivity","CSV creation error", e);
+                                }
                             }
                         });
                     }
@@ -168,7 +230,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
                                 String gyro_entry = data.value(AngularVelocity.class).toString();
                                 Log.i("MainActivity", gyro_entry);
-                                dataconcat.append(gyro_entry);
+                                //dataconcat.append(gyro_entry);
                             }
                         });
                     }
@@ -190,7 +252,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                 accelerometer.acceleration().stop();
                 gyroscope.stop();
                 gyroscope.angularVelocity().stop();
-                metawear.tearDown();
+                //metawear.tearDown();
+                //Log.i("Concat", dataconcat.toString());
             }
         });
 
@@ -204,14 +267,14 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                    try {
-                        FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
-                        fileOutputStream.write();
-                        fileOutputStream.close();
-                    }
-                    catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                   // try {
+                    //    FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
+                     //   fileOutputStream.write();
+                     //   fileOutputStream.close();
+                   // }
+                    //catch (IOException e) {
+                     //   e.printStackTrace();
+                    //}
                 }
         });
     }
