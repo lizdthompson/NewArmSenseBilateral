@@ -92,17 +92,17 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private GyroBmi160 gyroscope;
     private Debug debugModule;
 
-    private String filename = "myfile";
+    File file;
+    private String filename = "myfile1";
     //private String filepath = "MyFileStorage";
 
-    public boolean available;
+    //public boolean available;
 
-    String string = "Hello world!";
+    //String string = "Hello world!";
+    String csv_accel_entry;
+
 
     File myInternalFile;
-    //StringBuffer dataconcat;
-
-    //FileOutputStream outputStream;
 
     public DeviceSetupActivityFragment() {
     }
@@ -118,53 +118,20 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
         settings= (FragmentSettings) owner;
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
-
-        //ContextWrapper contextWrapper = new ContextWrapper(owner.getApplicationContext());
-        //File directory = contextWrapper.getDir(filepath,Context.MODE_PRIVATE);
-        //if(!directory.exists()){
-        //    directory.mkdir();
-        //}
-        //myInternalFile = new File(directory,filename);
-        //Log.i("MainActivity","HELLO WORLD");
-
         Context ctx = owner.getApplicationContext();
 
-        String state = Environment.getExternalStorageState();
-            if (Environment.MEDIA_MOUNTED.equals(state)) {
+       // String state = Environment.getExternalStorageState();
+         //   if (Environment.MEDIA_MOUNTED.equals(state)) {
 
-                available = true;
-                Log.i("MainActivity", "External storage available, yay!");
-            }
-            else{
-                available = false;
-                Log.i("MainActivity", "External storage not available :(");
-            }
-        File file = new File(ctx.getExternalFilesDir(null),filename);
+         //       available = true;
+          //      Log.i("MainActivity", "External storage available, yay!");
+         //   }
+         //   else{
+         //       available = false;
+         //       Log.i("MainActivity", "External storage not available :(");
+         //   }
+        file = new File(ctx.getExternalFilesDir(null),filename);
 
-        try {
-            OutputStream os = new FileOutputStream(file);
-            os.write(string.getBytes());
-            os.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-
-        //File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),filename);
-
-
-
-        //try {
-        //    outputStream = ctx.openFileOutput(filename, Context.MODE_APPEND);
-       //     //File file = new File(ctx.getFilesDir(),filename);
-        //    outputStream.write(string.getBytes());
-        //    outputStream.close();
-       //     Log.i("MainActivity","HELLO WORLD - 2");
-       // } catch (Exception e) {
-       //     Log.i("MainActivity","HELLO WORLD - 3");
-      //     e.printStackTrace();
-      //  }
     }
 
 
@@ -200,15 +167,13 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                 String accel_entry = data.value(Acceleration.class).toString();
                                 Log.i("MainActivity", accel_entry.toString());
                                 //dataconcat.append(accel_entry);
-                                String csv_accel_entry = accel_entry + ",";
-                                OutputStream outputStream;
+                                csv_accel_entry = accel_entry + ",";
                                 try {
-                                    outputStream = new BufferedOutputStream(new FileOutputStream(myInternalFile, true));
-                                    outputStream.write(csv_accel_entry.getBytes());
-                                    outputStream.write("\n".getBytes());
-                                    outputStream.close();
-                                } catch (Exception e) {
-                                    Log.e("MainActivity","CSV creation error", e);
+                                    OutputStream os = new FileOutputStream(file);
+                                    os.write(csv_accel_entry.getBytes());
+                                    os.close();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
                                 }
                             }
                         });
@@ -230,7 +195,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
                                 String gyro_entry = data.value(AngularVelocity.class).toString();
                                 Log.i("MainActivity", gyro_entry);
-                                //dataconcat.append(gyro_entry);
                             }
                         });
                     }
@@ -253,7 +217,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                 gyroscope.stop();
                 gyroscope.angularVelocity().stop();
                 //metawear.tearDown();
-                //Log.i("Concat", dataconcat.toString());
             }
         });
 
@@ -267,14 +230,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                   // try {
-                    //    FileOutputStream fileOutputStream = new FileOutputStream(myInternalFile);
-                     //   fileOutputStream.write();
-                     //   fileOutputStream.close();
-                   // }
-                    //catch (IOException e) {
-                     //   e.printStackTrace();
-                    //}
+
                 }
         });
     }
