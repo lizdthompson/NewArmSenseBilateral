@@ -66,14 +66,12 @@ import com.mbientlab.metawear.module.Debug;
 import bolts.Continuation;
 import bolts.Task;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.regex.Pattern;
 
 import android.os.Environment;
 
@@ -93,16 +91,32 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private Debug debugModule;
 
     File file;
-    private String filename = "myfile1";
-    //private String filepath = "MyFileStorage";
-
-    //public boolean available;
-
-    //String string = "Hello world!";
-    String csv_accel_entry;
+    private String filename = "newfile";
+    boolean available;
 
 
-    File myInternalFile;
+    Float accel_raw_x;
+    Float accel_raw_y;
+    Float accel_raw_z;
+    Float gyro_raw_x;
+    Float gyro_raw_y;
+    Float gyro_raw_z;
+
+    String accel_string_x;
+    String accel_string_y;
+    String accel_string_z;
+    String gyro_string_x;
+    String gyro_string_y;
+    String gyro_string_z;
+
+    String accel_csv_x;
+    String accel_csv_y;
+    String accel_csv_z;
+    String gyro_csv_x;
+    String gyro_csv_y;
+    String gyro_csv_z;
+
+    String csv_entry = "time" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y" + "," + "gyroscope_z" + "\n";
 
     public DeviceSetupActivityFragment() {
     }
@@ -120,21 +134,18 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
         Context ctx = owner.getApplicationContext();
 
-       // String state = Environment.getExternalStorageState();
-         //   if (Environment.MEDIA_MOUNTED.equals(state)) {
+        String state = Environment.getExternalStorageState();
+            if (Environment.MEDIA_MOUNTED.equals(state)) {
 
-         //       available = true;
-          //      Log.i("MainActivity", "External storage available, yay!");
-         //   }
-         //   else{
-         //       available = false;
-         //       Log.i("MainActivity", "External storage not available :(");
-         //   }
+                available = true;
+                Log.i("MainActivity", "External storage available, yay!");
+            }
+            else{
+                available = false;
+                Log.i("MainActivity", "External storage not available :(");
+            }
         file = new File(ctx.getExternalFilesDir(null),filename);
-
     }
-
-
 
     @Override
     public void onDestroy() {
@@ -164,17 +175,24 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         source.stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                String accel_entry = data.value(Acceleration.class).toString();
-                                Log.i("MainActivity", accel_entry.toString());
-                                //dataconcat.append(accel_entry);
-                                csv_accel_entry = accel_entry + ",";
-                                try {
-                                    OutputStream os = new FileOutputStream(file);
-                                    os.write(csv_accel_entry.getBytes());
-                                    os.close();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
+
+                                accel_raw_x = data.value(Acceleration.class).x();
+                                accel_raw_y = data.value(Acceleration.class).y();
+                                accel_raw_z = data.value(Acceleration.class).z();
+
+                                // Prepare for writing to CSV
+                                accel_string_x = accel_raw_x.toString();
+                                accel_string_y = accel_raw_y.toString();
+                                accel_string_z = accel_raw_z.toString();
+
+                                //accel_csv_x = accel_csv_x + accel_string_x + ",\n";
+                                //accel_csv_y = accel_csv_y + accel_string_y + ",\n";
+                                //accel_csv_z = accel_csv_z + accel_string_z + ",\n";
+
+                                // Write to serial port
+                                //Log.i("MainActivity", accel_raw_x.toString());
+                                //Log.i("MainActivity", "Running!");
+
                             }
                         });
                     }
@@ -194,7 +212,22 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             @Override
                             public void apply(Data data, Object... env) {
                                 String gyro_entry = data.value(AngularVelocity.class).toString();
-                                Log.i("MainActivity", gyro_entry);
+
+                                gyro_raw_x = data.value(AngularVelocity.class).x();
+                                gyro_raw_y = data.value(AngularVelocity.class).y();
+                                gyro_raw_z = data.value(AngularVelocity.class).z();
+
+                                // Prepare for writing to CSV
+                                gyro_string_x = gyro_raw_x.toString();
+                                gyro_string_y = gyro_raw_y.toString();
+                                gyro_string_z = gyro_raw_z.toString();
+
+                                //gyro_csv_x = gyro_csv_x + gyro_string_x + ",\n";
+                                //gyro_csv_y = gyro_csv_y + gyro_string_y + ",\n";
+                                //gyro_csv_z = gyro_csv_z + gyro_string_z + ",\n";
+                                //Log.i("MainActivity", gyro_entry);
+                                //csv_entry = accel_string_x +  accel_string_y +  accel_string_z + ",\n";
+                                csv_entry = csv_entry + accel_string_x + "," + accel_string_y + "," + accel_string_z + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
                             }
                         });
                     }
@@ -223,14 +256,24 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         view.findViewById(R.id.sens_reset).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                debugModule.resetAsync();
+                //debugModule.resetAsync();
+
             }
         });
 
         view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                try {
+                    OutputStream os = new FileOutputStream(file);
+                    //csv_entry = accel_csv_x + accel_csv_y + accel_csv_z + gyro_csv_x + gyro_csv_y + gyro_csv_z;
+                    os.write(csv_entry.getBytes());
+                    os.close();
+                    Log.i("MainActivity", "File is created!" + filename);
+                } catch (IOException e) {
+                    Log.i("MainActivity", "File NOT created ...!");
+                    e.printStackTrace();
+                }
                 }
         });
     }
@@ -244,7 +287,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                 .commit();
 
         gyroscope = metawear.getModule(GyroBmi160.class);
-        gyroscope.configure()
+        gyroscope.configure().odr(GyroBmi160.OutputDataRate.ODR_50_HZ)
+                .range(GyroBmi160.Range.FSR_125)
                 .commit();
     }
 
