@@ -36,10 +36,13 @@ import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.ContextWrapper;
+//import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.icu.text.SimpleDateFormat;
+//import android.icu.util.Calendar;
 import android.os.IBinder;
+import android.support.design.widget.BaseTransientBottomBar;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.util.Log;
@@ -70,10 +73,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.regex.Pattern;
 
-import android.os.Environment;
+import java.sql.Timestamp;
+import java.util.Date;
+import java.util.Calendar;
+
+
+
+//import android.os.Environment;
 
 
 /**
@@ -90,17 +97,24 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private GyroBmi160 gyroscope;
     private Debug debugModule;
 
+
     File file;
-    private String filename = "newfile";
+    private String filename;
     boolean available;
+    Context ctx;
 
-
+    // Initialize Variables
     Float accel_raw_x;
     Float accel_raw_y;
     Float accel_raw_z;
     Float gyro_raw_x;
     Float gyro_raw_y;
     Float gyro_raw_z;
+
+    String time_stamp;
+    //Calendar time_accel_y;
+    //Calendar time_accel_z;
+
 
     String accel_string_x;
     String accel_string_y;
@@ -109,14 +123,16 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     String gyro_string_y;
     String gyro_string_z;
 
-    String accel_csv_x;
-    String accel_csv_y;
-    String accel_csv_z;
-    String gyro_csv_x;
-    String gyro_csv_y;
-    String gyro_csv_z;
+    String deltaTime_string;
 
-    String csv_entry = "time" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y" + "," + "gyroscope_z" + "\n";
+    long deltaTime;
+    long previousTime;
+    long currentTime;
+    long totalTime;
+
+    // Column Titles
+    String csv_raw_entry = "time" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y"
+            + "," + "gyroscope_z" + "\n" + "ms" + "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
 
     public DeviceSetupActivityFragment() {
     }
@@ -132,25 +148,12 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
         settings= (FragmentSettings) owner;
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
-        Context ctx = owner.getApplicationContext();
-
-        String state = Environment.getExternalStorageState();
-            if (Environment.MEDIA_MOUNTED.equals(state)) {
-
-                available = true;
-                Log.i("MainActivity", "External storage available, yay!");
-            }
-            else{
-                available = false;
-                Log.i("MainActivity", "External storage not available :(");
-            }
-        file = new File(ctx.getExternalFilesDir(null),filename);
+        ctx = owner.getApplicationContext();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-
         ///< Unbind the service when the activity is destroyed
         getActivity().getApplicationContext().unbindService(this);
     }
@@ -165,7 +168,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        view.findViewById(R.id.acc_start).setOnClickListener(new View.OnClickListener(){
+        view.findViewById(R.id.start).setOnClickListener(new View.OnClickListener(){
 
             @Override
             public void onClick(View v) {
@@ -176,6 +179,14 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             @Override
                             public void apply(Data data, Object... env) {
 
+                                //Log.i("MainActivity", "Stops Here!");
+                                currentTime = System.currentTimeMillis();
+                                deltaTime = currentTime - previousTime;
+                                totalTime = totalTime + deltaTime;
+                                time_stamp = Long.toString(totalTime);
+
+                                previousTime = currentTime;
+
                                 accel_raw_x = data.value(Acceleration.class).x();
                                 accel_raw_y = data.value(Acceleration.class).y();
                                 accel_raw_z = data.value(Acceleration.class).z();
@@ -184,15 +195,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                 accel_string_x = accel_raw_x.toString();
                                 accel_string_y = accel_raw_y.toString();
                                 accel_string_z = accel_raw_z.toString();
-
-                                //accel_csv_x = accel_csv_x + accel_string_x + ",\n";
-                                //accel_csv_y = accel_csv_y + accel_string_y + ",\n";
-                                //accel_csv_z = accel_csv_z + accel_string_z + ",\n";
-
-                                // Write to serial port
-                                //Log.i("MainActivity", accel_raw_x.toString());
-                                //Log.i("MainActivity", "Running!");
-
                             }
                         });
                     }
@@ -202,6 +204,13 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                     public Void then(Task<Route> task) throws Exception {
                         accelerometer.acceleration().start();
                         accelerometer.start();
+                        Log.i("MainActivity", "Running!");
+                        //Log.d("MainActivity", "Time = " + startTime);
+                        currentTime = System.currentTimeMillis();
+                        previousTime = currentTime;
+                        totalTime = 0;
+                        //deltaTime_string = "0";
+                        //time_stamp = deltaTime_string;
                         return null;
                     }
                 });
@@ -222,12 +231,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                 gyro_string_y = gyro_raw_y.toString();
                                 gyro_string_z = gyro_raw_z.toString();
 
-                                //gyro_csv_x = gyro_csv_x + gyro_string_x + ",\n";
-                                //gyro_csv_y = gyro_csv_y + gyro_string_y + ",\n";
-                                //gyro_csv_z = gyro_csv_z + gyro_string_z + ",\n";
-                                //Log.i("MainActivity", gyro_entry);
-                                //csv_entry = accel_string_x +  accel_string_y +  accel_string_z + ",\n";
-                                csv_entry = csv_entry + accel_string_x + "," + accel_string_y + "," + accel_string_z + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
+                                csv_raw_entry = csv_raw_entry + time_stamp + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
                             }
                         });
                     }
@@ -242,9 +246,10 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
             }
         });
 
-        view.findViewById(R.id.acc_stop).setOnClickListener(new View.OnClickListener() {
+        view.findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.i("MainActivity", "Stopped!");
                 accelerometer.stop();
                 accelerometer.acceleration().stop();
                 gyroscope.stop();
@@ -257,19 +262,23 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
             @Override
             public void onClick(View v) {
                 //debugModule.resetAsync();
-
             }
         });
 
         view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //filename = "yep";
+                //filename = Calendar.getInstance().toString();
+                filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
+                filename = filename.replaceAll("[^a-zA-Z0-9]", "_");
+                file = new File(ctx.getExternalFilesDir(null),filename);
                 try {
                     OutputStream os = new FileOutputStream(file);
                     //csv_entry = accel_csv_x + accel_csv_y + accel_csv_z + gyro_csv_x + gyro_csv_y + gyro_csv_z;
-                    os.write(csv_entry.getBytes());
+                    os.write(csv_raw_entry.getBytes());
                     os.close();
-                    Log.i("MainActivity", "File is created!" + filename);
+                    Log.i("MainActivity", "File is created as..." + filename);
                 } catch (IOException e) {
                     Log.i("MainActivity", "File NOT created ...!");
                     e.printStackTrace();
