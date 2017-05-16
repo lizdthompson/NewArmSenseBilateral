@@ -39,16 +39,18 @@ import android.content.Context;
 //import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.icu.text.SimpleDateFormat;
-//import android.icu.util.Calendar;
 import android.os.IBinder;
-import android.support.design.widget.BaseTransientBottomBar;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.Switch;
+import android.widget.TextView;
 
 import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.data.Acceleration;
@@ -74,13 +76,9 @@ import java.io.IOException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 
-import java.sql.Timestamp;
-import java.util.Date;
+import java.lang.Math;
+
 import java.util.Calendar;
-
-
-
-//import android.os.Environment;
 
 
 /**
@@ -91,12 +89,14 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         BluetoothDevice getBtDevice();
     }
 
+    private TextView switchStatus;
+    private Switch dataTypeSwitch;
+
     private MetaWearBoard metawear = null;
     private FragmentSettings settings;
     private Accelerometer accelerometer;
     private GyroBmi160 gyroscope;
     private Debug debugModule;
-
 
     File file;
     private String filename;
@@ -104,17 +104,14 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     Context ctx;
 
     // Initialize Variables
-    Float accel_raw_x;
-    Float accel_raw_y;
-    Float accel_raw_z;
-    Float gyro_raw_x;
-    Float gyro_raw_y;
-    Float gyro_raw_z;
+    double accel_raw_x;
+    double accel_raw_y;
+    double accel_raw_z;
+    double gyro_raw_x;
+    double gyro_raw_y;
+    double gyro_raw_z;
 
     String time_stamp;
-    //Calendar time_accel_y;
-    //Calendar time_accel_z;
-
 
     String accel_string_x;
     String accel_string_y;
@@ -123,16 +120,35 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     String gyro_string_y;
     String gyro_string_z;
 
-    String deltaTime_string;
-
     long deltaTime;
     long previousTime;
     long currentTime;
     long totalTime;
 
+    double[] vertical_sensor_from_accel = new double[3];
+    double vertical_sensor_from_accel_norm;
+    double vertical_sensor_norm;
+    double[][] angular_velocity_body_matrix = new double[3][3];
+    double[] vertical_sensor_dot_from_gyro = new double[3];
+    double[] vertical_sensor_dot_from_accel = new double[3];
+    double[] vertical_sensor_dot = new double[3];
+    double[] sensor_axis_sensor = new double[3];
+    double[] vertical_sensor = null; // not sure what to do here...
+    double alpha = 3;
+    double inclination_angle;
+    double inclination_angle_from_accel;
+
+    double feedback_toggle = 0;
+    double motor_status = 0;
+    double threshold = 90;
+    int calculateInclination = 1;
+
     // Column Titles
     String csv_raw_entry = "time" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y"
             + "," + "gyroscope_z" + "\n" + "ms" + "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
+    String csv_inclination_entry = "time" + "," + "inclination angle" + "," + "feedback toggle" + "," + "motor status" + "," + "inclination angle from accelerometers"
+            + "," + "threshold" + "," + "alpha" + "\n" + "ms" + "," + "deg" + "," + "binary" + "," + "binary" + "," + "deg" + "," + "deg" + "," + " " + "\n";
+
 
     public DeviceSetupActivityFragment() {
     }
@@ -149,6 +165,10 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         settings= (FragmentSettings) owner;
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
         ctx = owner.getApplicationContext();
+
+        sensor_axis_sensor[0] = 0;
+        sensor_axis_sensor[1] = 1;
+        sensor_axis_sensor[2] = 2;
     }
 
     @Override
@@ -168,6 +188,36 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        switchStatus = (TextView) view.findViewById(R.id.switchStatus);
+        dataTypeSwitch = (Switch) view.findViewById(R.id.dataTypeSwitch);
+
+        //set the switch to ON
+        dataTypeSwitch.setChecked(true);
+        //attach a listener to check for changes in state
+        dataTypeSwitch.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView,
+                                         boolean isChecked) {
+                if(isChecked){
+                    switchStatus.setText("Calculating Inclination Angle");
+                    calculateInclination = 1;
+                }else{
+                    switchStatus.setText("Collecting Raw Data");
+                    calculateInclination = 0;
+                }
+            }
+        });
+
+        //check the current state before we display the screen
+        if(dataTypeSwitch.isChecked()){
+            switchStatus.setText("Calculating Inclination Angle");
+            calculateInclination = 1;
+        }
+        else {
+            switchStatus.setText("Collecting Raw Data");
+            calculateInclination = 0;
+        }
+
         view.findViewById(R.id.start).setOnClickListener(new View.OnClickListener(){
 
             @Override
@@ -179,22 +229,29 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             @Override
                             public void apply(Data data, Object... env) {
 
-                                //Log.i("MainActivity", "Stops Here!");
-                                currentTime = System.currentTimeMillis();
-                                deltaTime = currentTime - previousTime;
-                                totalTime = totalTime + deltaTime;
-                                time_stamp = Long.toString(totalTime);
+                                    // Get Timestamp
+                                    currentTime = System.currentTimeMillis();
+                                    deltaTime = currentTime - previousTime;
+                                    totalTime = totalTime + deltaTime;
 
-                                previousTime = currentTime;
+                                if (deltaTime > 20) {
+                                    time_stamp = Long.toString(totalTime);
+                                    previousTime = currentTime;
+                                    // Read Accel and Prepare for writing to CSV
+                                    accel_raw_x = data.value(Acceleration.class).x();
+                                    accel_raw_y = data.value(Acceleration.class).y();
+                                    accel_raw_z = data.value(Acceleration.class).z();
+                                    accel_string_x = Double.toString(accel_raw_x);
+                                    accel_string_y = Double.toString(accel_raw_y);
+                                    accel_string_z = Double.toString(accel_raw_z);
 
-                                accel_raw_x = data.value(Acceleration.class).x();
-                                accel_raw_y = data.value(Acceleration.class).y();
-                                accel_raw_z = data.value(Acceleration.class).z();
+                                    if (vertical_sensor == null) {
+                                        vertical_sensor[0] = accel_raw_x;
+                                        vertical_sensor[1] = accel_raw_y;
+                                        vertical_sensor[2] = accel_raw_z;
+                                    }
+                                }
 
-                                // Prepare for writing to CSV
-                                accel_string_x = accel_raw_x.toString();
-                                accel_string_y = accel_raw_y.toString();
-                                accel_string_z = accel_raw_z.toString();
                             }
                         });
                     }
@@ -205,12 +262,9 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         accelerometer.acceleration().start();
                         accelerometer.start();
                         Log.i("MainActivity", "Running!");
-                        //Log.d("MainActivity", "Time = " + startTime);
                         currentTime = System.currentTimeMillis();
                         previousTime = currentTime;
                         totalTime = 0;
-                        //deltaTime_string = "0";
-                        //time_stamp = deltaTime_string;
                         return null;
                     }
                 });
@@ -220,18 +274,84 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         source.stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                String gyro_entry = data.value(AngularVelocity.class).toString();
+                                if (deltaTime > 20) {
+                                    // Read Gyro and Prepare for writing to CSV
+                                    gyro_raw_x = data.value(AngularVelocity.class).x();
+                                    gyro_raw_y = data.value(AngularVelocity.class).y();
+                                    gyro_raw_z = data.value(AngularVelocity.class).z();
+                                    gyro_string_x = Double.toString(gyro_raw_x);
+                                    gyro_string_y = Double.toString(gyro_raw_y);
+                                    gyro_string_z = Double.toString(gyro_raw_z);
 
-                                gyro_raw_x = data.value(AngularVelocity.class).x();
-                                gyro_raw_y = data.value(AngularVelocity.class).y();
-                                gyro_raw_z = data.value(AngularVelocity.class).z();
+                                    if (calculateInclination == 1) {
 
-                                // Prepare for writing to CSV
-                                gyro_string_x = gyro_raw_x.toString();
-                                gyro_string_y = gyro_raw_y.toString();
-                                gyro_string_z = gyro_raw_z.toString();
+                                        //// CALCULATE INCLINATION ANGLE /////
+                                        vertical_sensor_from_accel[0] = accel_raw_x;
+                                        vertical_sensor_from_accel[1] = accel_raw_y;
+                                        vertical_sensor_from_accel[2] = accel_raw_z;
 
-                                csv_raw_entry = csv_raw_entry + time_stamp + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
+                                        // normalize accelerometer estimate
+                                        vertical_sensor_from_accel_norm = Math.sqrt(vertical_sensor_from_accel[0] * vertical_sensor_from_accel[0]
+                                                + vertical_sensor_from_accel[1] * vertical_sensor_from_accel[1] + vertical_sensor_from_accel[2]
+                                                * vertical_sensor_from_accel[2]);
+
+                                        vertical_sensor_from_accel[0] = vertical_sensor_from_accel[0] / vertical_sensor_from_accel_norm;
+                                        vertical_sensor_from_accel[1] = vertical_sensor_from_accel[1] / vertical_sensor_from_accel_norm;
+                                        vertical_sensor_from_accel[2] = vertical_sensor_from_accel[2] / vertical_sensor_from_accel_norm;
+
+                                        // GYROSCOPE INCLINATION ANGLE
+                                        angular_velocity_body_matrix[0][0] = 0;
+                                        angular_velocity_body_matrix[0][1] = -gyro_raw_z;
+                                        angular_velocity_body_matrix[0][2] = gyro_raw_y;
+                                        angular_velocity_body_matrix[1][0] = gyro_raw_z;
+                                        angular_velocity_body_matrix[1][1] = 0;
+                                        angular_velocity_body_matrix[1][2] = -gyro_raw_x;
+                                        angular_velocity_body_matrix[2][0] = -gyro_raw_y;
+                                        angular_velocity_body_matrix[2][1] = gyro_raw_x;
+                                        angular_velocity_body_matrix[2][2] = 0;
+
+                                        // rotational velocity based on gyroscope readings
+                                        vertical_sensor_dot_from_gyro[0] = -(angular_velocity_body_matrix[0][0] * vertical_sensor[0] + angular_velocity_body_matrix[0][1] * vertical_sensor[1] + angular_velocity_body_matrix[0][2] * vertical_sensor[2]);
+                                        vertical_sensor_dot_from_gyro[1] = -(angular_velocity_body_matrix[1][0] * vertical_sensor[0] + angular_velocity_body_matrix[1][1] * vertical_sensor[1] + angular_velocity_body_matrix[1][2] * vertical_sensor[2]);
+                                        vertical_sensor_dot_from_gyro[2] = -(angular_velocity_body_matrix[2][0] * vertical_sensor[0] + angular_velocity_body_matrix[2][1] * vertical_sensor[1] + angular_velocity_body_matrix[2][2] * vertical_sensor[2]);
+
+                                        // rotational velocity based on difference to accelerometer estimate
+                                        vertical_sensor_dot_from_accel[0] = -alpha * (vertical_sensor[0] - vertical_sensor_from_accel[0]);
+                                        vertical_sensor_dot_from_accel[1] = -alpha * (vertical_sensor[1] - vertical_sensor_from_accel[1]);
+                                        vertical_sensor_dot_from_accel[2] = -alpha * (vertical_sensor[2] - vertical_sensor_from_accel[2]);
+
+                                        // combine the two estimates
+                                        vertical_sensor_dot[0] = vertical_sensor_dot_from_gyro[0] + vertical_sensor_dot_from_accel[0];
+                                        vertical_sensor_dot[1] = vertical_sensor_dot_from_gyro[1] + vertical_sensor_dot_from_accel[1];
+                                        vertical_sensor_dot[2] = vertical_sensor_dot_from_gyro[2] + vertical_sensor_dot_from_accel[2];
+
+                                        // integrate rotational velocity
+                                        vertical_sensor[0] = vertical_sensor[0] + deltaTime * vertical_sensor_dot[0];
+                                        vertical_sensor[1] = vertical_sensor[1] + deltaTime * vertical_sensor_dot[1];
+                                        vertical_sensor[2] = vertical_sensor[2] + deltaTime * vertical_sensor_dot[2];
+
+                                        // normalize after integration
+                                        vertical_sensor_norm = Math.sqrt(vertical_sensor[0] * vertical_sensor[0] + vertical_sensor[1] * vertical_sensor[1] + vertical_sensor[2] * vertical_sensor[2]);
+                                        vertical_sensor[0] = vertical_sensor[0] / vertical_sensor_norm;
+                                        vertical_sensor[1] = vertical_sensor[1] / vertical_sensor_norm;
+                                        vertical_sensor[2] = vertical_sensor[2] / vertical_sensor_norm;
+
+                                        // calculate inclination angles
+                                        inclination_angle = Math.acos(vertical_sensor[0] * sensor_axis_sensor[0] + vertical_sensor[1] * sensor_axis_sensor[1] + vertical_sensor[2] * sensor_axis_sensor[2]);
+                                        inclination_angle_from_accel = Math.acos(vertical_sensor_from_accel[0] * sensor_axis_sensor[0] + vertical_sensor_from_accel[1] * sensor_axis_sensor[1] + vertical_sensor_from_accel[2] * sensor_axis_sensor[2]);
+
+                                        // convert to degrees
+                                        inclination_angle = Math.toDegrees(inclination_angle);
+                                        inclination_angle_from_accel = Math.toDegrees(inclination_angle_from_accel);
+
+                                        csv_inclination_entry = csv_inclination_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
+                                                motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "\n";
+                                    } else {
+                                        // Concat all data since start
+                                        csv_raw_entry = csv_raw_entry + time_stamp + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
+                                                + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
+                                    }
+                                }
                             }
                         });
                     }
@@ -258,32 +378,45 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
             }
         });
 
-        view.findViewById(R.id.sens_reset).setOnClickListener(new View.OnClickListener() {
+        /*view.findViewById(R.id.sens_reset).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //debugModule.resetAsync();
             }
-        });
+        });*/
 
         view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //filename = "yep";
-                //filename = Calendar.getInstance().toString();
-                filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
-                filename = filename.replaceAll("[^a-zA-Z0-9]", "_");
-                file = new File(ctx.getExternalFilesDir(null),filename);
-                try {
-                    OutputStream os = new FileOutputStream(file);
-                    //csv_entry = accel_csv_x + accel_csv_y + accel_csv_z + gyro_csv_x + gyro_csv_y + gyro_csv_z;
-                    os.write(csv_raw_entry.getBytes());
-                    os.close();
-                    Log.i("MainActivity", "File is created as..." + filename);
-                } catch (IOException e) {
-                    Log.i("MainActivity", "File NOT created ...!");
-                    e.printStackTrace();
+                if (calculateInclination == 1) {
+                    filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
+                    filename = filename.replaceAll("[^a-zA-Z0-9]", "_") + "_" + "InclinationAngle" ;
+                    file = new File(ctx.getExternalFilesDir(null), filename);
+                    try {
+                        OutputStream os = new FileOutputStream(file);
+                        os.write(csv_inclination_entry.getBytes());
+                        os.close();
+                        Log.i("MainActivity", "File is created as..." + filename);
+                    } catch (IOException e) {
+                        Log.i("MainActivity", "File NOT created ...!");
+                        e.printStackTrace();
+                    }
                 }
+                else{
+                    filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
+                    filename = filename.replaceAll("[^a-zA-Z0-9]", "_") + "_" +"RawData";
+                    file = new File(ctx.getExternalFilesDir(null),  filename);
+                    try {
+                        OutputStream os = new FileOutputStream(file);
+                        os.write(csv_raw_entry.getBytes());
+                        os.close();
+                        Log.i("MainActivity", "File is created as..." + filename);
+                    } catch (IOException e) {
+                        Log.i("MainActivity", "File NOT created ...!");
+                        e.printStackTrace();
+                    }
                 }
+            }
         });
     }
 
@@ -292,12 +425,12 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         metawear = ((BtleService.LocalBinder) service).getMetaWearBoard(settings.getBtDevice());
         accelerometer = metawear.getModule(Accelerometer.class);
         accelerometer.configure()
-                .odr(50f)      // set sampling frequency
+                //.odr(50f)      // set sampling frequency
                 .commit();
 
         gyroscope = metawear.getModule(GyroBmi160.class);
-        gyroscope.configure().odr(GyroBmi160.OutputDataRate.ODR_50_HZ)
-                .range(GyroBmi160.Range.FSR_125)
+        gyroscope.configure() //.odr(GyroBmi160.OutputDataRate.ODR_50_HZ)
+                //.range(GyroBmi160.Range.FSR_125)
                 .commit();
     }
 
