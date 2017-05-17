@@ -125,21 +125,41 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     long currentTime;
     long totalTime;
 
-    double[] vertical_sensor_from_accel = new double[3];
-    double vertical_sensor_from_accel_norm;
-    double vertical_sensor_norm;
-    double[][] angular_velocity_body_matrix = new double[3][3];
-    double[] vertical_sensor_dot_from_gyro = new double[3];
-    double[] vertical_sensor_dot_from_accel = new double[3];
-    double[] vertical_sensor_dot = new double[3];
-    double[] sensor_axis_sensor = new double[3];
-    double[] vertical_sensor = null; // not sure what to do here...
+    double vertical_sensor_from_accel_0;
+    double vertical_sensor_from_accel_1;
+    double vertical_sensor_from_accel_2;
+    double angular_velocity_body_matrix_0_0;
+    double angular_velocity_body_matrix_0_1;
+    double angular_velocity_body_matrix_0_2;
+    double angular_velocity_body_matrix_1_0;
+    double angular_velocity_body_matrix_1_1;
+    double angular_velocity_body_matrix_1_2;
+    double angular_velocity_body_matrix_2_0;
+    double angular_velocity_body_matrix_2_1;
+    double angular_velocity_body_matrix_2_2;
+    double vertical_sensor_dot_from_gyro_0;
+    double vertical_sensor_dot_from_gyro_1;
+    double vertical_sensor_dot_from_gyro_2;
+    double vertical_sensor_dot_from_accel_0;
+    double vertical_sensor_dot_from_accel_1;
+    double vertical_sensor_dot_from_accel_2;
+    double vertical_sensor_dot_0;
+    double vertical_sensor_dot_1;
+    double vertical_sensor_dot_2;
+    double sensor_axis_sensor_0 = 0;
+    double sensor_axis_sensor_1 = 1;
+    double sensor_axis_sensor_2 = 0;
+    double vertical_sensor_0;
+    double vertical_sensor_1;
+    double vertical_sensor_2;
     double alpha = 3;
     double inclination_angle;
     double inclination_angle_from_accel;
+    double vertical_sensor_from_accel_norm;
+    double vertical_sensor_norm;
 
-    double feedback_toggle = 0;
-    double motor_status = 0;
+    int feedback_toggle = 0;
+    int motor_status = 0;
     double threshold = 90;
     int calculateInclination = 1;
 
@@ -165,10 +185,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         settings= (FragmentSettings) owner;
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
         ctx = owner.getApplicationContext();
-
-        sensor_axis_sensor[0] = 0;
-        sensor_axis_sensor[1] = 1;
-        sensor_axis_sensor[2] = 2;
     }
 
     @Override
@@ -234,7 +250,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                     deltaTime = currentTime - previousTime;
                                     totalTime = totalTime + deltaTime;
 
-                                if (deltaTime > 20) {
                                     time_stamp = Long.toString(totalTime);
                                     previousTime = currentTime;
                                     // Read Accel and Prepare for writing to CSV
@@ -245,12 +260,11 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                     accel_string_y = Double.toString(accel_raw_y);
                                     accel_string_z = Double.toString(accel_raw_z);
 
-                                    if (vertical_sensor == null) {
-                                        vertical_sensor[0] = accel_raw_x;
-                                        vertical_sensor[1] = accel_raw_y;
-                                        vertical_sensor[2] = accel_raw_z;
+                                    if(vertical_sensor_0 == 0.0f) {
+                                        vertical_sensor_0 = accel_raw_x;
+                                        vertical_sensor_1 = accel_raw_y;
+                                        vertical_sensor_2 = accel_raw_z;
                                     }
-                                }
 
                             }
                         });
@@ -274,7 +288,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         source.stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                if (deltaTime > 20) {
                                     // Read Gyro and Prepare for writing to CSV
                                     gyro_raw_x = data.value(AngularVelocity.class).x();
                                     gyro_raw_y = data.value(AngularVelocity.class).y();
@@ -286,60 +299,60 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                     if (calculateInclination == 1) {
 
                                         //// CALCULATE INCLINATION ANGLE /////
-                                        vertical_sensor_from_accel[0] = accel_raw_x;
-                                        vertical_sensor_from_accel[1] = accel_raw_y;
-                                        vertical_sensor_from_accel[2] = accel_raw_z;
+                                        vertical_sensor_from_accel_0 = accel_raw_x;
+                                        vertical_sensor_from_accel_1 = accel_raw_y;
+                                        vertical_sensor_from_accel_2 = accel_raw_z;
 
                                         // normalize accelerometer estimate
-                                        vertical_sensor_from_accel_norm = Math.sqrt(vertical_sensor_from_accel[0] * vertical_sensor_from_accel[0]
-                                                + vertical_sensor_from_accel[1] * vertical_sensor_from_accel[1] + vertical_sensor_from_accel[2]
-                                                * vertical_sensor_from_accel[2]);
+                                        vertical_sensor_from_accel_norm = Math.sqrt(vertical_sensor_from_accel_0 * vertical_sensor_from_accel_0
+                                                + vertical_sensor_from_accel_1 * vertical_sensor_from_accel_1 + vertical_sensor_from_accel_2
+                                                * vertical_sensor_from_accel_2);
 
-                                        vertical_sensor_from_accel[0] = vertical_sensor_from_accel[0] / vertical_sensor_from_accel_norm;
-                                        vertical_sensor_from_accel[1] = vertical_sensor_from_accel[1] / vertical_sensor_from_accel_norm;
-                                        vertical_sensor_from_accel[2] = vertical_sensor_from_accel[2] / vertical_sensor_from_accel_norm;
+                                        vertical_sensor_from_accel_0 = vertical_sensor_from_accel_0 / vertical_sensor_from_accel_norm;
+                                        vertical_sensor_from_accel_1 = vertical_sensor_from_accel_1 / vertical_sensor_from_accel_norm;
+                                        vertical_sensor_from_accel_2 = vertical_sensor_from_accel_2 / vertical_sensor_from_accel_norm;
 
                                         // GYROSCOPE INCLINATION ANGLE
-                                        angular_velocity_body_matrix[0][0] = 0;
-                                        angular_velocity_body_matrix[0][1] = -gyro_raw_z;
-                                        angular_velocity_body_matrix[0][2] = gyro_raw_y;
-                                        angular_velocity_body_matrix[1][0] = gyro_raw_z;
-                                        angular_velocity_body_matrix[1][1] = 0;
-                                        angular_velocity_body_matrix[1][2] = -gyro_raw_x;
-                                        angular_velocity_body_matrix[2][0] = -gyro_raw_y;
-                                        angular_velocity_body_matrix[2][1] = gyro_raw_x;
-                                        angular_velocity_body_matrix[2][2] = 0;
+                                        angular_velocity_body_matrix_0_0 = 0;
+                                        angular_velocity_body_matrix_0_1 = -gyro_raw_z;
+                                        angular_velocity_body_matrix_0_2 = gyro_raw_y;
+                                        angular_velocity_body_matrix_1_0 = gyro_raw_z;
+                                        angular_velocity_body_matrix_1_1 = 0;
+                                        angular_velocity_body_matrix_1_2 = -gyro_raw_x;
+                                        angular_velocity_body_matrix_2_0 = -gyro_raw_y;
+                                        angular_velocity_body_matrix_2_1 = gyro_raw_x;
+                                        angular_velocity_body_matrix_2_2 = 0;
 
                                         // rotational velocity based on gyroscope readings
-                                        vertical_sensor_dot_from_gyro[0] = -(angular_velocity_body_matrix[0][0] * vertical_sensor[0] + angular_velocity_body_matrix[0][1] * vertical_sensor[1] + angular_velocity_body_matrix[0][2] * vertical_sensor[2]);
-                                        vertical_sensor_dot_from_gyro[1] = -(angular_velocity_body_matrix[1][0] * vertical_sensor[0] + angular_velocity_body_matrix[1][1] * vertical_sensor[1] + angular_velocity_body_matrix[1][2] * vertical_sensor[2]);
-                                        vertical_sensor_dot_from_gyro[2] = -(angular_velocity_body_matrix[2][0] * vertical_sensor[0] + angular_velocity_body_matrix[2][1] * vertical_sensor[1] + angular_velocity_body_matrix[2][2] * vertical_sensor[2]);
+                                        vertical_sensor_dot_from_gyro_0 = -(angular_velocity_body_matrix_0_0 * vertical_sensor_0 + angular_velocity_body_matrix_0_1 * vertical_sensor_1 + angular_velocity_body_matrix_0_2 * vertical_sensor_2);
+                                        vertical_sensor_dot_from_gyro_1 = -(angular_velocity_body_matrix_1_0 * vertical_sensor_0 + angular_velocity_body_matrix_1_1 * vertical_sensor_1 + angular_velocity_body_matrix_1_2 * vertical_sensor_2);
+                                        vertical_sensor_dot_from_gyro_2 = -(angular_velocity_body_matrix_2_0 * vertical_sensor_0 + angular_velocity_body_matrix_2_1 * vertical_sensor_1 + angular_velocity_body_matrix_2_2 * vertical_sensor_2);
 
                                         // rotational velocity based on difference to accelerometer estimate
-                                        vertical_sensor_dot_from_accel[0] = -alpha * (vertical_sensor[0] - vertical_sensor_from_accel[0]);
-                                        vertical_sensor_dot_from_accel[1] = -alpha * (vertical_sensor[1] - vertical_sensor_from_accel[1]);
-                                        vertical_sensor_dot_from_accel[2] = -alpha * (vertical_sensor[2] - vertical_sensor_from_accel[2]);
+                                        vertical_sensor_dot_from_accel_0 = -alpha * (vertical_sensor_0 - vertical_sensor_from_accel_0);
+                                        vertical_sensor_dot_from_accel_1 = -alpha * (vertical_sensor_1 - vertical_sensor_from_accel_1);
+                                        vertical_sensor_dot_from_accel_2 = -alpha * (vertical_sensor_2 - vertical_sensor_from_accel_2);
 
                                         // combine the two estimates
-                                        vertical_sensor_dot[0] = vertical_sensor_dot_from_gyro[0] + vertical_sensor_dot_from_accel[0];
-                                        vertical_sensor_dot[1] = vertical_sensor_dot_from_gyro[1] + vertical_sensor_dot_from_accel[1];
-                                        vertical_sensor_dot[2] = vertical_sensor_dot_from_gyro[2] + vertical_sensor_dot_from_accel[2];
+                                        vertical_sensor_dot_0 = vertical_sensor_dot_from_gyro_0 + vertical_sensor_dot_from_accel_0;
+                                        vertical_sensor_dot_1 = vertical_sensor_dot_from_gyro_1 + vertical_sensor_dot_from_accel_1;
+                                        vertical_sensor_dot_2 = vertical_sensor_dot_from_gyro_2 + vertical_sensor_dot_from_accel_2;
 
                                         // integrate rotational velocity
-                                        vertical_sensor[0] = vertical_sensor[0] + deltaTime * vertical_sensor_dot[0];
-                                        vertical_sensor[1] = vertical_sensor[1] + deltaTime * vertical_sensor_dot[1];
-                                        vertical_sensor[2] = vertical_sensor[2] + deltaTime * vertical_sensor_dot[2];
+                                        vertical_sensor_0 = vertical_sensor_0 + deltaTime * vertical_sensor_dot_0;
+                                        vertical_sensor_1 = vertical_sensor_1 + deltaTime * vertical_sensor_dot_1;
+                                        vertical_sensor_2 = vertical_sensor_2 + deltaTime * vertical_sensor_dot_2;
 
                                         // normalize after integration
-                                        vertical_sensor_norm = Math.sqrt(vertical_sensor[0] * vertical_sensor[0] + vertical_sensor[1] * vertical_sensor[1] + vertical_sensor[2] * vertical_sensor[2]);
-                                        vertical_sensor[0] = vertical_sensor[0] / vertical_sensor_norm;
-                                        vertical_sensor[1] = vertical_sensor[1] / vertical_sensor_norm;
-                                        vertical_sensor[2] = vertical_sensor[2] / vertical_sensor_norm;
+                                        vertical_sensor_norm = Math.sqrt(vertical_sensor_0 * vertical_sensor_0 + vertical_sensor_1 * vertical_sensor_1 + vertical_sensor_2 * vertical_sensor_2);
+                                        vertical_sensor_0 = vertical_sensor_0 / vertical_sensor_norm;
+                                        vertical_sensor_1 = vertical_sensor_1 / vertical_sensor_norm;
+                                        vertical_sensor_2 = vertical_sensor_2 / vertical_sensor_norm;
 
                                         // calculate inclination angles
-                                        inclination_angle = Math.acos(vertical_sensor[0] * sensor_axis_sensor[0] + vertical_sensor[1] * sensor_axis_sensor[1] + vertical_sensor[2] * sensor_axis_sensor[2]);
-                                        inclination_angle_from_accel = Math.acos(vertical_sensor_from_accel[0] * sensor_axis_sensor[0] + vertical_sensor_from_accel[1] * sensor_axis_sensor[1] + vertical_sensor_from_accel[2] * sensor_axis_sensor[2]);
-
+                                        inclination_angle = Math.acos(vertical_sensor_0 * sensor_axis_sensor_0 + vertical_sensor_1 * sensor_axis_sensor_1 + vertical_sensor_2 * sensor_axis_sensor_2);
+                                        inclination_angle_from_accel = Math.acos(vertical_sensor_from_accel_0 * sensor_axis_sensor_0 + vertical_sensor_from_accel_1 * sensor_axis_sensor_1 + vertical_sensor_from_accel_2 * sensor_axis_sensor_2);
+                                        Log.i("MainActivity", "Calculating!");
                                         // convert to degrees
                                         inclination_angle = Math.toDegrees(inclination_angle);
                                         inclination_angle_from_accel = Math.toDegrees(inclination_angle_from_accel);
@@ -351,7 +364,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                         csv_raw_entry = csv_raw_entry + time_stamp + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
                                                 + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
                                     }
-                                }
                             }
                         });
                     }
