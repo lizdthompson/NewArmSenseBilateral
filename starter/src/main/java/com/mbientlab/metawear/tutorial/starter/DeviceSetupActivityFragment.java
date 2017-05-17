@@ -120,10 +120,10 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     String gyro_string_y;
     String gyro_string_z;
 
-    long deltaTime;
+    double deltaTime;
     long previousTime;
     long currentTime;
-    long totalTime;
+    double totalTime;
 
     double vertical_sensor_from_accel_0;
     double vertical_sensor_from_accel_1;
@@ -165,9 +165,9 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
     // Column Titles
     String csv_raw_entry = "time" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y"
-            + "," + "gyroscope_z" + "\n" + "ms" + "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
+            + "," + "gyroscope_z" + "\n" + "sec" + "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
     String csv_inclination_entry = "time" + "," + "inclination angle" + "," + "feedback toggle" + "," + "motor status" + "," + "inclination angle from accelerometers"
-            + "," + "threshold" + "," + "alpha" + "\n" + "ms" + "," + "deg" + "," + "binary" + "," + "binary" + "," + "deg" + "," + "deg" + "," + " " + "\n";
+            + "," + "threshold" + "," + "alpha" + "\n" + "sec" + "," + "deg" + "," + "binary" + "," + "binary" + "," + "deg" + "," + "deg" + "," + " " + "\n";
 
 
     public DeviceSetupActivityFragment() {
@@ -246,11 +246,12 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
 
                                     // Get Timestamp
-                                    currentTime = System.currentTimeMillis();
-                                    deltaTime = currentTime - previousTime;
+                                    //currentTime = System.currentTimeMillis();
+                                    //deltaTime = (currentTime - previousTime);
+                                    deltaTime = .04;
                                     totalTime = totalTime + deltaTime;
 
-                                    time_stamp = Long.toString(totalTime);
+                                    time_stamp = Double.toString(totalTime);
                                     previousTime = currentTime;
                                     // Read Accel and Prepare for writing to CSV
                                     accel_raw_x = data.value(Acceleration.class).x();
@@ -265,7 +266,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                         vertical_sensor_1 = accel_raw_y;
                                         vertical_sensor_2 = accel_raw_z;
                                     }
-
                             }
                         });
                     }
@@ -276,8 +276,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         accelerometer.acceleration().start();
                         accelerometer.start();
                         Log.i("MainActivity", "Running!");
-                        currentTime = System.currentTimeMillis();
-                        previousTime = currentTime;
+                        //currentTime = System.currentTimeMillis();
+                        //previousTime = currentTime;
                         totalTime = 0;
                         return null;
                     }
@@ -297,7 +297,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                     gyro_string_z = Double.toString(gyro_raw_z);
 
                                     if (calculateInclination == 1) {
-
                                         //// CALCULATE INCLINATION ANGLE /////
                                         vertical_sensor_from_accel_0 = accel_raw_x;
                                         vertical_sensor_from_accel_1 = accel_raw_y;
@@ -352,7 +351,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                         // calculate inclination angles
                                         inclination_angle = Math.acos(vertical_sensor_0 * sensor_axis_sensor_0 + vertical_sensor_1 * sensor_axis_sensor_1 + vertical_sensor_2 * sensor_axis_sensor_2);
                                         inclination_angle_from_accel = Math.acos(vertical_sensor_from_accel_0 * sensor_axis_sensor_0 + vertical_sensor_from_accel_1 * sensor_axis_sensor_1 + vertical_sensor_from_accel_2 * sensor_axis_sensor_2);
-                                        Log.i("MainActivity", "Calculating!");
                                         // convert to degrees
                                         inclination_angle = Math.toDegrees(inclination_angle);
                                         inclination_angle_from_accel = Math.toDegrees(inclination_angle_from_accel);
@@ -437,11 +435,11 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         metawear = ((BtleService.LocalBinder) service).getMetaWearBoard(settings.getBtDevice());
         accelerometer = metawear.getModule(Accelerometer.class);
         accelerometer.configure()
-                //.odr(50f)      // set sampling frequency
+                .odr(25f)      // set sampling frequency
                 .commit();
 
         gyroscope = metawear.getModule(GyroBmi160.class);
-        gyroscope.configure() //.odr(GyroBmi160.OutputDataRate.ODR_50_HZ)
+        gyroscope.configure().odr(GyroBmi160.OutputDataRate.ODR_25_HZ)
                 //.range(GyroBmi160.Range.FSR_125)
                 .commit();
     }
