@@ -68,6 +68,8 @@ import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Debug;
 
+import org.w3c.dom.Text;
+
 import bolts.Continuation;
 import bolts.Task;
 
@@ -91,6 +93,9 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
     private TextView switchStatus;
     private Switch dataTypeSwitch;
+    private TextView AccelAngleText;
+    private TextView CombinedAngleText;
+    private TextView TimeText;
 
     private MetaWearBoard metawear = null;
     private FragmentSettings settings;
@@ -110,6 +115,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     double gyro_raw_x;
     double gyro_raw_y;
     double gyro_raw_z;
+    double previous_accel_raw_x;
+    double previous_gyro_raw_x;
 
     String time_stamp;
 
@@ -205,7 +212,12 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         super.onViewCreated(view, savedInstanceState);
 
         switchStatus = (TextView) view.findViewById(R.id.switchStatus);
+        AccelAngleText = (TextView) view.findViewById(R.id.AccelAngleText);
+        CombinedAngleText = (TextView) view.findViewById(R.id.CombinedAngleText);
         dataTypeSwitch = (Switch) view.findViewById(R.id.dataTypeSwitch);
+        TimeText = (TextView) view. findViewById(R.id.TimeText);
+        AccelAngleText.setText("Accel Inclination Angle: " + accel_string_x);
+        CombinedAngleText.setText("Combined Inclination Angle: " + accel_raw_y);
 
         //set the switch to ON
         dataTypeSwitch.setChecked(true);
@@ -223,6 +235,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                 }
             }
         });
+
+
 
         //check the current state before we display the screen
         if(dataTypeSwitch.isChecked()){
@@ -246,26 +260,32 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             public void apply(Data data, Object... env) {
 
                                     // Get Timestamp
-                                    //currentTime = System.currentTimeMillis();
-                                    //deltaTime = (currentTime - previousTime);
-                                    deltaTime = .04;
-                                    totalTime = totalTime + deltaTime;
+                                    currentTime = System.currentTimeMillis();
+                                    deltaTime = (currentTime - previousTime)/1000;
 
-                                    time_stamp = Double.toString(totalTime);
-                                    previousTime = currentTime;
                                     // Read Accel and Prepare for writing to CSV
-                                    accel_raw_x = data.value(Acceleration.class).x();
-                                    accel_raw_y = data.value(Acceleration.class).y();
+                                    accel_raw_x = data.value(Acceleration.class).y();
+                                    accel_raw_y = data.value(Acceleration.class).x();
                                     accel_raw_z = data.value(Acceleration.class).z();
                                     accel_string_x = Double.toString(accel_raw_x);
                                     accel_string_y = Double.toString(accel_raw_y);
                                     accel_string_z = Double.toString(accel_raw_z);
+                                   /* Log.i("accel_x", accel_string_x);
+                                    Log.i("accel_y", accel_string_y);
+                                    Log.i("accel_z", accel_string_z);
+*/
+                                if (accel_raw_x != previous_accel_raw_x) {
+                                    previous_accel_raw_x = accel_raw_x;
+                                    totalTime = totalTime + deltaTime;
+                                    time_stamp = Double.toString(totalTime);
+                                    previousTime = currentTime;
 
-                                    if(vertical_sensor_0 == 0.0f) {
+                                    if (vertical_sensor_0 == 0.0f) {
                                         vertical_sensor_0 = accel_raw_x;
                                         vertical_sensor_1 = accel_raw_y;
                                         vertical_sensor_2 = accel_raw_z;
                                     }
+                                }
                             }
                         });
                     }
@@ -276,8 +296,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         accelerometer.acceleration().start();
                         accelerometer.start();
                         Log.i("MainActivity", "Running!");
-                        //currentTime = System.currentTimeMillis();
-                        //previousTime = currentTime;
+                        currentTime = System.currentTimeMillis();
+                        previousTime = currentTime;
                         totalTime = 0;
                         return null;
                     }
@@ -288,14 +308,24 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         source.stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                    // Read Gyro and Prepare for writing to CSV
-                                    gyro_raw_x = data.value(AngularVelocity.class).x();
-                                    gyro_raw_y = data.value(AngularVelocity.class).y();
-                                    gyro_raw_z = data.value(AngularVelocity.class).z();
-                                    gyro_string_x = Double.toString(gyro_raw_x);
-                                    gyro_string_y = Double.toString(gyro_raw_y);
-                                    gyro_string_z = Double.toString(gyro_raw_z);
+                                // Read Gyro and Prepare for writing to CSV
+                                gyro_raw_x = data.value(AngularVelocity.class).y();
+                                gyro_raw_y = data.value(AngularVelocity.class).x();
+                                gyro_raw_z = data.value(AngularVelocity.class).z();
+                                gyro_raw_x = Math.toRadians(gyro_raw_x);
+                                gyro_raw_y = Math.toRadians(gyro_raw_y);
+                                gyro_raw_z = Math.toRadians(gyro_raw_z);
 
+                                gyro_string_x = Double.toString(gyro_raw_x);
+                                gyro_string_y = Double.toString(gyro_raw_y);
+                                gyro_string_z = Double.toString(gyro_raw_z);
+
+
+                                if (gyro_raw_x != previous_gyro_raw_x) {
+                                    previous_gyro_raw_x = gyro_raw_x;
+                                    /*Log.i("gyro_x", gyro_string_x);
+                                    Log.i("gyro_y", gyro_string_y);
+                                    Log.i("gyro_z", gyro_string_z);*/
                                     if (calculateInclination == 1) {
                                         //// CALCULATE INCLINATION ANGLE /////
                                         vertical_sensor_from_accel_0 = accel_raw_x;
@@ -357,11 +387,16 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
                                         csv_inclination_entry = csv_inclination_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
                                                 motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "\n";
+                                        //AccelAngleText.setText(("Accel Inclination Angle: " + inclination_angle_from_accel));
+                                        // CombinedAngleText.setText(("Combined Inclination Angle: " + inclination_angle));
                                     } else {
                                         // Concat all data since start
                                         csv_raw_entry = csv_raw_entry + time_stamp + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
                                                 + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
+                                        //AccelAngleText.setText("Accel Inclination Angle: "+ accel_string_x);
+                                        //CombinedAngleText.setText("Combined Inclination Angle:  + Raw Data" );
                                     }
+                                }
                             }
                         });
                     }
