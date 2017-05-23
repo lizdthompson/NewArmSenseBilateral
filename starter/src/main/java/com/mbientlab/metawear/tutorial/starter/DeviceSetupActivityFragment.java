@@ -128,8 +128,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     String gyro_string_z;
 
     double deltaTime;
-    long previousTime;
-    long currentTime;
+    double previousTime;
+    double currentTime;
     double totalTime;
 
     double vertical_sensor_from_accel_0;
@@ -259,32 +259,36 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             @Override
                             public void apply(Data data, Object... env) {
 
-                                    // Get Timestamp
-                                    currentTime = System.currentTimeMillis();
-                                    deltaTime = (currentTime - previousTime)/1000;
+                                // Get Timestamp
+                                currentTime = System.currentTimeMillis();
+                                deltaTime = (currentTime - previousTime)/1000;
 
-                                    // Read Accel and Prepare for writing to CSV
-                                    accel_raw_x = data.value(Acceleration.class).y();
-                                    accel_raw_y = data.value(Acceleration.class).x();
-                                    accel_raw_z = data.value(Acceleration.class).z();
-                                    accel_string_x = Double.toString(accel_raw_x);
-                                    accel_string_y = Double.toString(accel_raw_y);
-                                    accel_string_z = Double.toString(accel_raw_z);
-                                   /* Log.i("accel_x", accel_string_x);
-                                    Log.i("accel_y", accel_string_y);
-                                    Log.i("accel_z", accel_string_z);
-*/
+                                // Read Accel and Prepare for writing to CSV
+                                accel_raw_x = data.value(Acceleration.class).x();
+                                accel_raw_y = data.value(Acceleration.class).y();
+                                accel_raw_z = data.value(Acceleration.class).z();
+                                accel_string_x = Double.toString(accel_raw_x);
+                                accel_string_y = Double.toString(accel_raw_y);
+                                accel_string_z = Double.toString(accel_raw_z);
+
+
+                                if (totalTime == 0){
+                                    double vertical_sensor_norm_init = Math.sqrt(accel_raw_x * accel_raw_x
+                                            + accel_raw_y * accel_raw_y + accel_raw_z  * accel_raw_z);
+                                    vertical_sensor_0 = accel_raw_x * 1 / vertical_sensor_norm_init;
+                                    vertical_sensor_1 = accel_raw_y * 1 / vertical_sensor_norm_init;
+                                    vertical_sensor_2 = accel_raw_z * 1 / vertical_sensor_norm_init;
+
+                                }
+                               /* Log.i("accel_x", accel_string_x);
+                                Log.i("accel_y", accel_string_y);
+                                Log.i("accel_z", accel_string_z);*/
                                 if (accel_raw_x != previous_accel_raw_x) {
                                     previous_accel_raw_x = accel_raw_x;
                                     totalTime = totalTime + deltaTime;
                                     time_stamp = Double.toString(totalTime);
                                     previousTime = currentTime;
 
-                                    if (vertical_sensor_0 == 0.0f) {
-                                        vertical_sensor_0 = accel_raw_x;
-                                        vertical_sensor_1 = accel_raw_y;
-                                        vertical_sensor_2 = accel_raw_z;
-                                    }
                                 }
                             }
                         });
@@ -309,8 +313,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                             @Override
                             public void apply(Data data, Object... env) {
                                 // Read Gyro and Prepare for writing to CSV
-                                gyro_raw_x = data.value(AngularVelocity.class).y();
-                                gyro_raw_y = data.value(AngularVelocity.class).x();
+                                gyro_raw_x = data.value(AngularVelocity.class).x();
+                                gyro_raw_y = data.value(AngularVelocity.class).y();
                                 gyro_raw_z = data.value(AngularVelocity.class).z();
                                 gyro_raw_x = Math.toRadians(gyro_raw_x);
                                 gyro_raw_y = Math.toRadians(gyro_raw_y);
@@ -386,7 +390,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                         inclination_angle_from_accel = Math.toDegrees(inclination_angle_from_accel);
 
                                         csv_inclination_entry = csv_inclination_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
-                                                motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "\n";
+                                                motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
+                                                + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
                                         //AccelAngleText.setText(("Accel Inclination Angle: " + inclination_angle_from_accel));
                                         // CombinedAngleText.setText(("Combined Inclination Angle: " + inclination_angle));
                                     } else {
@@ -465,7 +470,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         });
     }
 
-        @Override
+    @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         metawear = ((BtleService.LocalBinder) service).getMetaWearBoard(settings.getBtDevice());
         accelerometer = metawear.getModule(Accelerometer.class);
