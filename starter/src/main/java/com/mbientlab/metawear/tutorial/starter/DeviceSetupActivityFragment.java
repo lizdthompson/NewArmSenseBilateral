@@ -96,6 +96,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     private TextView AccelAngleText;
     private TextView CombinedAngleText;
     private TextView TimeText;
+    private TextView ProgramState;
 
     private MetaWearBoard metawear = null;
     private FragmentSettings settings;
@@ -171,10 +172,10 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     int calculateInclination = 1;
 
     // Column Titles
-    String csv_raw_entry = "time" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y"
-            + "," + "gyroscope_z" + "\n" + "sec" + "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
-    String csv_inclination_entry = "time" + "," + "inclination angle" + "," + "feedback toggle" + "," + "motor status" + "," + "inclination angle from accelerometers"
-            + "," + "threshold" + "," + "alpha" + "\n" + "sec" + "," + "deg" + "," + "binary" + "," + "binary" + "," + "deg" + "," + "deg" + "," + " " + "\n";
+    String csv_entry = "time" + "," + "inclination angle" + "," + "feedback toggle" + "," + "motor status" + "," + "inclination angle from accelerometers"
+            + "," + "threshold" + "," + "alpha" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y"
+            + "," + "gyroscope_z" + "\n" + "sec" + "," + "deg" + "," + "binary" + "," + "binary" + "," + "deg" + "," + "deg" + "," + " " +
+            "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
 
 
     public DeviceSetupActivityFragment() {
@@ -211,16 +212,16 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        switchStatus = (TextView) view.findViewById(R.id.switchStatus);
-        AccelAngleText = (TextView) view.findViewById(R.id.AccelAngleText);
+        /*//AccelAngleText = (TextView) view.findViewById(R.id.AccelAngleText);
         CombinedAngleText = (TextView) view.findViewById(R.id.CombinedAngleText);
         dataTypeSwitch = (Switch) view.findViewById(R.id.dataTypeSwitch);
-        TimeText = (TextView) view. findViewById(R.id.TimeText);
-        AccelAngleText.setText("Accel Inclination Angle: " + accel_string_x);
+        TimeText = (TextView) view. findViewById(R.id.TimeText);*/
+        /*AccelAngleText.setText("Accel Inclination Angle: " + accel_string_x);
         CombinedAngleText.setText("Combined Inclination Angle: " + accel_raw_y);
-
+        ProgramState = (TextView) view.find
+*/
         //set the switch to ON
-        dataTypeSwitch.setChecked(true);
+        /*dataTypeSwitch.setChecked(true);
         //attach a listener to check for changes in state
         dataTypeSwitch.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
@@ -232,21 +233,21 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                 }else{
                     switchStatus.setText("Collecting Raw Data");
                     calculateInclination = 0;
-                }
             }
-        });
-
+            }
+        });*/
+        ProgramState = (TextView) view.findViewById(R.id.ProgramState);
 
 
         //check the current state before we display the screen
-        if(dataTypeSwitch.isChecked()){
+        /*if(dataTypeSwitch.isChecked()){
             switchStatus.setText("Calculating Inclination Angle");
             calculateInclination = 1;
         }
         else {
             switchStatus.setText("Collecting Raw Data");
             calculateInclination = 0;
-        }
+        }*/
 
         view.findViewById(R.id.start).setOnClickListener(new View.OnClickListener(){
 
@@ -303,6 +304,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         currentTime = System.currentTimeMillis();
                         previousTime = currentTime;
                         totalTime = 0;
+                        ProgramState.setText("Collecting");
                         return null;
                     }
                 });
@@ -330,7 +332,6 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                     /*Log.i("gyro_x", gyro_string_x);
                                     Log.i("gyro_y", gyro_string_y);
                                     Log.i("gyro_z", gyro_string_z);*/
-                                    if (calculateInclination == 1) {
                                         //// CALCULATE INCLINATION ANGLE /////
                                         vertical_sensor_from_accel_0 = accel_raw_x;
                                         vertical_sensor_from_accel_1 = accel_raw_y;
@@ -389,18 +390,9 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                         inclination_angle = Math.toDegrees(inclination_angle);
                                         inclination_angle_from_accel = Math.toDegrees(inclination_angle_from_accel);
 
-                                        csv_inclination_entry = csv_inclination_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
+                                        csv_entry = csv_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
                                                 motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
                                                 + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
-                                        //AccelAngleText.setText(("Accel Inclination Angle: " + inclination_angle_from_accel));
-                                        // CombinedAngleText.setText(("Combined Inclination Angle: " + inclination_angle));
-                                    } else {
-                                        // Concat all data since start
-                                        csv_raw_entry = csv_raw_entry + time_stamp + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
-                                                + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
-                                        //AccelAngleText.setText("Accel Inclination Angle: "+ accel_string_x);
-                                        //CombinedAngleText.setText("Combined Inclination Angle:  + Raw Data" );
-                                    }
                                 }
                             }
                         });
@@ -424,6 +416,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                 accelerometer.acceleration().stop();
                 gyroscope.stop();
                 gyroscope.angularVelocity().stop();
+                ProgramState.setText("Paused");
                 //metawear.tearDown();
             }
         });
@@ -438,35 +431,21 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (calculateInclination == 1) {
                     filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
-                    filename = filename.replaceAll("[^a-zA-Z0-9]", "_") + "_" + "InclinationAngle" ;
+                    filename = filename.replaceAll("[^a-zA-Z0-9]", "_");
                     file = new File(ctx.getExternalFilesDir(null), filename);
                     try {
                         OutputStream os = new FileOutputStream(file);
-                        os.write(csv_inclination_entry.getBytes());
+                        os.write(csv_entry.getBytes());
                         os.close();
                         Log.i("MainActivity", "File is created as..." + filename);
                     } catch (IOException e) {
                         Log.i("MainActivity", "File NOT created ...!");
                         e.printStackTrace();
                     }
-                }
-                else{
-                    filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
-                    filename = filename.replaceAll("[^a-zA-Z0-9]", "_") + "_" +"RawData";
-                    file = new File(ctx.getExternalFilesDir(null),  filename);
-                    try {
-                        OutputStream os = new FileOutputStream(file);
-                        os.write(csv_raw_entry.getBytes());
-                        os.close();
-                        Log.i("MainActivity", "File is created as..." + filename);
-                    } catch (IOException e) {
-                        Log.i("MainActivity", "File NOT created ...!");
-                        e.printStackTrace();
-                    }
-                }
-            }
+                csv_entry = null;
+                ProgramState.setText("Data Saved and Cleared");
+        }
         });
     }
 
