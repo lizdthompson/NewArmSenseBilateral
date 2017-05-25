@@ -51,6 +51,7 @@ import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.data.Acceleration;
@@ -67,6 +68,7 @@ import com.mbientlab.metawear.builder.RouteComponent;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.GyroBmi160;
 import com.mbientlab.metawear.module.Debug;
+import com.mbientlab.metawear.module.Haptic;
 
 import org.w3c.dom.Text;
 
@@ -91,12 +93,10 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
         BluetoothDevice getBtDevice();
     }
 
-    private TextView switchStatus;
-    private Switch dataTypeSwitch;
-    private TextView AccelAngleText;
-    private TextView CombinedAngleText;
-    private TextView TimeText;
-    private TextView ProgramState;
+    private TextView ProgramState_text;
+    /*private  TextView feedbackToggle_text;*/
+    private ToggleButton ProgramState;
+    private ToggleButton feedbackToggleButton;
 
     private MetaWearBoard metawear = null;
     private FragmentSettings settings;
@@ -166,10 +166,9 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     double vertical_sensor_from_accel_norm;
     double vertical_sensor_norm;
 
-    int feedback_toggle = 0;
-    int motor_status = 0;
-    double threshold = 90;
-    int calculateInclination = 1;
+    int feedback_toggle;
+    int motor_status;
+    double threshold ;
 
     // Column Titles
     String csv_entry = "time" + "," + "inclination angle" + "," + "feedback toggle" + "," + "motor status" + "," + "inclination angle from accelerometers"
@@ -212,126 +211,99 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        /*//AccelAngleText = (TextView) view.findViewById(R.id.AccelAngleText);
-        CombinedAngleText = (TextView) view.findViewById(R.id.CombinedAngleText);
-        dataTypeSwitch = (Switch) view.findViewById(R.id.dataTypeSwitch);
-        TimeText = (TextView) view. findViewById(R.id.TimeText);*/
-        /*AccelAngleText.setText("Accel Inclination Angle: " + accel_string_x);
-        CombinedAngleText.setText("Combined Inclination Angle: " + accel_raw_y);
-        ProgramState = (TextView) view.find
-*/
-        //set the switch to ON
-        /*dataTypeSwitch.setChecked(true);
-        //attach a listener to check for changes in state
-        dataTypeSwitch.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+        ProgramState_text = (TextView) view.findViewById(R.id.ProgramState_text);
+        /*feedbackToggle_text = (TextView) view.findViewById(R.id.ProgramState_text);*/
+        ProgramState = (ToggleButton) view.findViewById(R.id.ProgramState);
+        feedbackToggleButton = (ToggleButton) view.findViewById(R.id.feedbackToggleButton);
+
+        feedbackToggleButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
-            public void onCheckedChanged(CompoundButton buttonView,
-                                         boolean isChecked) {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                feedback_toggle = 1;
+                //feedbackToggle_text.setText("Motor ON");
+            }
+        });
+
+        ProgramState.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton button, boolean isChecked){
                 if(isChecked){
-                    switchStatus.setText("Calculating Inclination Angle");
-                    calculateInclination = 1;
-                }else{
-                    switchStatus.setText("Collecting Raw Data");
-                    calculateInclination = 0;
-            }
-            }
-        });*/
-        ProgramState = (TextView) view.findViewById(R.id.ProgramState);
+                    Log.i("MainActivity", "Running!");
+                    accelerometer.acceleration().addRouteAsync(new RouteBuilder() {
+                        @Override
+                        public void configure(RouteComponent source) {
+                            source.stream(new Subscriber() {
+                                @Override
+                                public void apply(Data data, Object... env) {
+
+                                    // Get Timestamp
+                                    currentTime = System.currentTimeMillis();
+                                    deltaTime = (currentTime - previousTime)/1000;
+
+                                    // Read Accel and Prepare for writing to CSV
+                                    accel_raw_x = data.value(Acceleration.class).x();
+                                    accel_raw_y = data.value(Acceleration.class).y();
+                                    accel_raw_z = data.value(Acceleration.class).z();
+                                    accel_string_x = Double.toString(accel_raw_x);
+                                    accel_string_y = Double.toString(accel_raw_y);
+                                    accel_string_z = Double.toString(accel_raw_z);
 
 
-        //check the current state before we display the screen
-        /*if(dataTypeSwitch.isChecked()){
-            switchStatus.setText("Calculating Inclination Angle");
-            calculateInclination = 1;
-        }
-        else {
-            switchStatus.setText("Collecting Raw Data");
-            calculateInclination = 0;
-        }*/
+                                    if (totalTime == 0){
+                                        double vertical_sensor_norm_init = Math.sqrt(accel_raw_x * accel_raw_x
+                                                + accel_raw_y * accel_raw_y + accel_raw_z  * accel_raw_z);
+                                        vertical_sensor_0 = accel_raw_x * 1 / vertical_sensor_norm_init;
+                                        vertical_sensor_1 = accel_raw_y * 1 / vertical_sensor_norm_init;
+                                        vertical_sensor_2 = accel_raw_z * 1 / vertical_sensor_norm_init;
 
-        view.findViewById(R.id.start).setOnClickListener(new View.OnClickListener(){
+                                    }
 
-            @Override
-            public void onClick(View v) {
-                accelerometer.acceleration().addRouteAsync(new RouteBuilder() {
-                    @Override
-                    public void configure(RouteComponent source) {
-                        source.stream(new Subscriber() {
-                            @Override
-                            public void apply(Data data, Object... env) {
+                                    if (accel_raw_x != previous_accel_raw_x) {
+                                        previous_accel_raw_x = accel_raw_x;
+                                        totalTime = totalTime + deltaTime;
+                                        time_stamp = Double.toString(totalTime);
+                                        previousTime = currentTime;
 
-                                // Get Timestamp
-                                currentTime = System.currentTimeMillis();
-                                deltaTime = (currentTime - previousTime)/1000;
-
-                                // Read Accel and Prepare for writing to CSV
-                                accel_raw_x = data.value(Acceleration.class).x();
-                                accel_raw_y = data.value(Acceleration.class).y();
-                                accel_raw_z = data.value(Acceleration.class).z();
-                                accel_string_x = Double.toString(accel_raw_x);
-                                accel_string_y = Double.toString(accel_raw_y);
-                                accel_string_z = Double.toString(accel_raw_z);
-
-
-                                if (totalTime == 0){
-                                    double vertical_sensor_norm_init = Math.sqrt(accel_raw_x * accel_raw_x
-                                            + accel_raw_y * accel_raw_y + accel_raw_z  * accel_raw_z);
-                                    vertical_sensor_0 = accel_raw_x * 1 / vertical_sensor_norm_init;
-                                    vertical_sensor_1 = accel_raw_y * 1 / vertical_sensor_norm_init;
-                                    vertical_sensor_2 = accel_raw_z * 1 / vertical_sensor_norm_init;
-
+                                    }
                                 }
-                               /* Log.i("accel_x", accel_string_x);
-                                Log.i("accel_y", accel_string_y);
-                                Log.i("accel_z", accel_string_z);*/
-                                if (accel_raw_x != previous_accel_raw_x) {
-                                    previous_accel_raw_x = accel_raw_x;
-                                    totalTime = totalTime + deltaTime;
-                                    time_stamp = Double.toString(totalTime);
-                                    previousTime = currentTime;
+                            });
+                        }
+                    }).continueWith(new Continuation<Route, Void>() {
 
-                                }
-                            }
-                        });
-                    }
-                }).continueWith(new Continuation<Route, Void>() {
+                        @Override
+                        public Void then(Task<Route> task) throws Exception {
+                            accelerometer.acceleration().start();
+                            accelerometer.start();
+                            Log.i("MainActivity", "Running!");
+                            currentTime = System.currentTimeMillis();
+                            previousTime = currentTime;
+                            totalTime = 0;
+                            ProgramState.setText("Collecting");
+                            return null;
+                        }
+                    });
+                    gyroscope.angularVelocity().addRouteAsync(new RouteBuilder() {
+                        @Override
+                        public void configure(RouteComponent source) {
+                            source.stream(new Subscriber() {
+                                @Override
+                                public void apply(Data data, Object... env) {
+                                    // Read Gyro and Prepare for writing to CSV
+                                    gyro_raw_x = data.value(AngularVelocity.class).x();
+                                    gyro_raw_y = data.value(AngularVelocity.class).y();
+                                    gyro_raw_z = data.value(AngularVelocity.class).z();
+                                    gyro_raw_x = Math.toRadians(gyro_raw_x);
+                                    gyro_raw_y = Math.toRadians(gyro_raw_y);
+                                    gyro_raw_z = Math.toRadians(gyro_raw_z);
 
-                    @Override
-                    public Void then(Task<Route> task) throws Exception {
-                        accelerometer.acceleration().start();
-                        accelerometer.start();
-                        Log.i("MainActivity", "Running!");
-                        currentTime = System.currentTimeMillis();
-                        previousTime = currentTime;
-                        totalTime = 0;
-                        ProgramState.setText("Collecting");
-                        return null;
-                    }
-                });
-                gyroscope.angularVelocity().addRouteAsync(new RouteBuilder() {
-                    @Override
-                    public void configure(RouteComponent source) {
-                        source.stream(new Subscriber() {
-                            @Override
-                            public void apply(Data data, Object... env) {
-                                // Read Gyro and Prepare for writing to CSV
-                                gyro_raw_x = data.value(AngularVelocity.class).x();
-                                gyro_raw_y = data.value(AngularVelocity.class).y();
-                                gyro_raw_z = data.value(AngularVelocity.class).z();
-                                gyro_raw_x = Math.toRadians(gyro_raw_x);
-                                gyro_raw_y = Math.toRadians(gyro_raw_y);
-                                gyro_raw_z = Math.toRadians(gyro_raw_z);
-
-                                gyro_string_x = Double.toString(gyro_raw_x);
-                                gyro_string_y = Double.toString(gyro_raw_y);
-                                gyro_string_z = Double.toString(gyro_raw_z);
+                                    gyro_string_x = Double.toString(gyro_raw_x);
+                                    gyro_string_y = Double.toString(gyro_raw_y);
+                                    gyro_string_z = Double.toString(gyro_raw_z);
 
 
-                                if (gyro_raw_x != previous_gyro_raw_x) {
-                                    previous_gyro_raw_x = gyro_raw_x;
-                                    /*Log.i("gyro_x", gyro_string_x);
-                                    Log.i("gyro_y", gyro_string_y);
-                                    Log.i("gyro_z", gyro_string_z);*/
+                                    if (gyro_raw_x != previous_gyro_raw_x) {
+                                        previous_gyro_raw_x = gyro_raw_x;
+
                                         //// CALCULATE INCLINATION ANGLE /////
                                         vertical_sensor_from_accel_0 = accel_raw_x;
                                         vertical_sensor_from_accel_1 = accel_raw_y;
@@ -390,9 +362,18 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                                         inclination_angle = Math.toDegrees(inclination_angle);
                                         inclination_angle_from_accel = Math.toDegrees(inclination_angle_from_accel);
 
-                                        csv_entry = csv_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
-                                                motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
-                                                + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
+                                       if (inclination_angle > threshold && feedback_toggle == 1){
+                                           motor_status = 1;
+                                        //board.getModule(Haptic.class).startBuzzer;
+                                        //metawear.getModule(Haptic.class).startBuzzer((short));
+                                        }
+                                        else{
+                                           motor_status = 0;
+                                       }
+
+                                    csv_entry = csv_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
+                                            motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
+                                            + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
                                 }
                             }
                         });
@@ -405,32 +386,16 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         return null;
                     }
                 });
-            }
-        });
+                    ProgramState_text.setText("Collecting...");
+                }
+                else{
+                    //Log.i("MainActivity", "Stopped!");
+                    accelerometer.stop();
+                    accelerometer.acceleration().stop();
+                    gyroscope.stop();
+                    gyroscope.angularVelocity().stop();
+                    ProgramState_text.setText("Saved previous data, Ready to Start");
 
-        view.findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.i("MainActivity", "Stopped!");
-                accelerometer.stop();
-                accelerometer.acceleration().stop();
-                gyroscope.stop();
-                gyroscope.angularVelocity().stop();
-                ProgramState.setText("Paused");
-                //metawear.tearDown();
-            }
-        });
-
-        /*view.findViewById(R.id.sens_reset).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //debugModule.resetAsync();
-            }
-        });*/
-
-        view.findViewById(R.id.data_save).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
                     filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
                     filename = filename.replaceAll("[^a-zA-Z0-9]", "_");
                     file = new File(ctx.getExternalFilesDir(null), filename);
@@ -443,9 +408,14 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                         Log.i("MainActivity", "File NOT created ...!");
                         e.printStackTrace();
                     }
-                csv_entry = null;
-                ProgramState.setText("Data Saved and Cleared");
-        }
+                    csv_entry = null;
+                    csv_entry = "time" + "," + "inclination angle" + "," + "feedback toggle" + "," + "motor status" + "," + "inclination angle from accelerometers"
+                            + "," + "threshold" + "," + "alpha" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y"
+                            + "," + "gyroscope_z" + "\n" + "sec" + "," + "deg" + "," + "binary" + "," + "binary" + "," + "deg" + "," + "deg" + "," + " " +
+                            "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
+                    ProgramState.setText("Data Saved and Cleared");
+                }
+            }
         });
     }
 

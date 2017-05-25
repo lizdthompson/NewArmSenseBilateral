@@ -40,41 +40,124 @@
     tools:context="com.mbientlab.metawear.tutorial.starter.DeviceSetupActivityFragment"
     tools:showIn="@layout/activity_device_setup">
 
-    <Button
-        android:text="Start"
-        android:id="@+id/start"
+    <TextView
+        android:id="@+id/MotorToggle_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Motor Toggle"
+        android:textAppearance="?android:attr/textAppearanceMedium"
         android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentEnd="true"/>
-
-    <Button android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Stop"
-        android:id="@+id/stop"
-        android:layout_below="@+id/start"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentEnd="true" />
-
-    <Button android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Save"
-        android:id="@+id/data_save"
-        android:layout_below="@+id/stop"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_alignParentStart="true" />
 
     <TextView
-        android:id="@+id/ProgramState"
+        android:id="@+id/Threshold_L_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@+id/data_save"
-        android:layout_marginTop="22dp"
-        android:text="Medium Text"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
+        android:text="Threshold L "
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:id="@+id/Threshold_R_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Threshold R"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true" />
+
+    <ToggleButton
+        android:id="@+id/feedbackToggleButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ToggleButton"
+        android:textOff = "MOTOR ON"
+        android:textOn="MOTOR OFF"
+        android:layout_marginTop="12dp"
+        android:layout_below="@+id/MotorToggle_text"
+        android:layout_alignParentStart="true" />
+    <Spinner
+        android:id="@+id/threshold_L_spinner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:entries="@array/threshold_numbers"
+        android:background="@android:drawable/btn_dropdown"
+        android:spinnerMode="dropdown"
+        android:layout_alignBottom="@+id/feedbackToggleButton"
+        android:layout_alignStart="@+id/Threshold_L_text" />
+
+    <Spinner
+        android:id="@+id/threshold_R_spinner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:entries="@array/threshold_numbers"
+        android:background="@android:drawable/btn_dropdown"
+        android:spinnerMode="dropdown"
+        android:layout_alignBottom="@+id/feedbackToggleButton"
+        android:layout_alignStart="@+id/Threshold_R_text" />
+
+    <TextView
+        android:id="@+id/feedbackToggle_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Trial #"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_marginStart="21dp"
+        android:layout_alignBaseline="@+id/subject_code"
+        android:layout_alignBottom="@+id/subject_code"
+        android:layout_alignStart="@+id/trial_number" />
 
 
+    <EditText
+        android:id="@+id/subject_code"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:ems="10"
+        android:text="enter subject code" android:inputType="text"
+        android:layout_below="@+id/threshold_L_spinner"
+        android:layout_alignEnd="@+id/Threshold_L_text" />
+
+    <EditText
+        android:id="@+id/trial_type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:ems="10"
+        android:text="enter trial type" android:inputType="text"
+        android:layout_below="@+id/subject_code"
+        android:layout_alignEnd="@+id/Threshold_L_text" />
+
+    <Spinner
+        android:id="@+id/trial_number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:entries="@array/trial_numbers"
+        android:background="@android:drawable/btn_dropdown"
+        android:spinnerMode="dropdown"
+        android:layout_alignTop="@+id/subject_code"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="30dp" />
+
+    <ToggleButton
+        android:id="@+id/ProgramState"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="ToggleButton"
+        android:layout_marginTop="41dp"
+        android:textOff = "Start"
+        android:textOn= "Stop"
+        android:layout_below="@+id/trial_type"
+        android:layout_centerHorizontal="true" />
+    <TextView
+        android:id="@+id/ProgramState_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Waiting to begin Data Collection"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_below="@+id/ProgramState"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="34dp" />
 
 </RelativeLayout>
