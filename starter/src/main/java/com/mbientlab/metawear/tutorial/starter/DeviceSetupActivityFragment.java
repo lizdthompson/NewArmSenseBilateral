@@ -95,7 +95,8 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
     private TextView ProgramState_text;
     /*private  TextView feedbackToggle_text;*/
-    private ToggleButton ProgramState;
+    private Switch ProgramState_switch;
+    private Boolean ProgramState_status = false;
     private ToggleButton feedbackToggleButton;
 
     private MetaWearBoard metawear = null;
@@ -213,18 +214,215 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
 
         ProgramState_text = (TextView) view.findViewById(R.id.ProgramState_text);
         /*feedbackToggle_text = (TextView) view.findViewById(R.id.ProgramState_text);*/
-        ProgramState = (ToggleButton) view.findViewById(R.id.ProgramState);
-        feedbackToggleButton = (ToggleButton) view.findViewById(R.id.feedbackToggleButton);
+       /* ProgramState = (ToggleButton) view.findViewById(R.id.ProgramState);
 
-        feedbackToggleButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+        feedbackToggleButton = (ToggleButton) view.findViewById(R.id.feedbackToggleButton);*/
+        ProgramState_switch = (Switch) view.findViewById(R.id.ProgramState);
+       /* feedbackToggleButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 feedback_toggle = 1;
                 //feedbackToggle_text.setText("Motor ON");
             }
-        });
+        });*/
+        ProgramState_switch.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if(ProgramState_status == false){
+                    ProgramState_status = true;
+                    accelerometer.acceleration().addRouteAsync(new RouteBuilder() {
+                        @Override
+                        public void configure(RouteComponent source) {
+                            source.stream(new Subscriber() {
+                                @Override
+                                public void apply(Data data, Object... env) {
 
-        ProgramState.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+                                    // Get Timestamp
+                                    currentTime = System.currentTimeMillis();
+                                    deltaTime = (currentTime - previousTime)/1000;
+
+                                    // Read Accel and Prepare for writing to CSV
+                                    accel_raw_x = data.value(Acceleration.class).x();
+                                    accel_raw_y = data.value(Acceleration.class).y();
+                                    accel_raw_z = data.value(Acceleration.class).z();
+                                    accel_string_x = Double.toString(accel_raw_x);
+                                    accel_string_y = Double.toString(accel_raw_y);
+                                    accel_string_z = Double.toString(accel_raw_z);
+
+
+                                    if (totalTime == 0){
+                                        double vertical_sensor_norm_init = Math.sqrt(accel_raw_x * accel_raw_x
+                                                + accel_raw_y * accel_raw_y + accel_raw_z  * accel_raw_z);
+                                        vertical_sensor_0 = accel_raw_x * 1 / vertical_sensor_norm_init;
+                                        vertical_sensor_1 = accel_raw_y * 1 / vertical_sensor_norm_init;
+                                        vertical_sensor_2 = accel_raw_z * 1 / vertical_sensor_norm_init;
+
+                                    }
+
+                                    if (accel_raw_x != previous_accel_raw_x) {
+                                        previous_accel_raw_x = accel_raw_x;
+                                        totalTime = totalTime + deltaTime;
+                                        time_stamp = Double.toString(totalTime);
+                                        previousTime = currentTime;
+
+                                    }
+                                }
+                            });
+                        }
+                    }).continueWith(new Continuation<Route, Void>() {
+
+                        @Override
+                        public Void then(Task<Route> task) throws Exception {
+                            accelerometer.acceleration().start();
+                            accelerometer.start();
+                            Log.i("MainActivity", "Running!");
+                            currentTime = System.currentTimeMillis();
+                            previousTime = currentTime;
+                            totalTime = 0;
+                            ProgramState_text.setText("Collecting");
+                            return null;
+                        }
+                    });
+                    gyroscope.angularVelocity().addRouteAsync(new RouteBuilder() {
+                        @Override
+                        public void configure(RouteComponent source) {
+                            source.stream(new Subscriber() {
+                                @Override
+                                public void apply(Data data, Object... env) {
+                                    // Read Gyro and Prepare for writing to CSV
+                                    gyro_raw_x = data.value(AngularVelocity.class).x();
+                                    gyro_raw_y = data.value(AngularVelocity.class).y();
+                                    gyro_raw_z = data.value(AngularVelocity.class).z();
+                                    gyro_raw_x = Math.toRadians(gyro_raw_x);
+                                    gyro_raw_y = Math.toRadians(gyro_raw_y);
+                                    gyro_raw_z = Math.toRadians(gyro_raw_z);
+
+                                    gyro_string_x = Double.toString(gyro_raw_x);
+                                    gyro_string_y = Double.toString(gyro_raw_y);
+                                    gyro_string_z = Double.toString(gyro_raw_z);
+
+
+                                    if (gyro_raw_x != previous_gyro_raw_x) {
+                                        previous_gyro_raw_x = gyro_raw_x;
+
+                                        //// CALCULATE INCLINATION ANGLE /////
+                                        vertical_sensor_from_accel_0 = accel_raw_x;
+                                        vertical_sensor_from_accel_1 = accel_raw_y;
+                                        vertical_sensor_from_accel_2 = accel_raw_z;
+
+                                        // normalize accelerometer estimate
+                                        vertical_sensor_from_accel_norm = Math.sqrt(vertical_sensor_from_accel_0 * vertical_sensor_from_accel_0
+                                                + vertical_sensor_from_accel_1 * vertical_sensor_from_accel_1 + vertical_sensor_from_accel_2
+                                                * vertical_sensor_from_accel_2);
+
+                                        vertical_sensor_from_accel_0 = vertical_sensor_from_accel_0 / vertical_sensor_from_accel_norm;
+                                        vertical_sensor_from_accel_1 = vertical_sensor_from_accel_1 / vertical_sensor_from_accel_norm;
+                                        vertical_sensor_from_accel_2 = vertical_sensor_from_accel_2 / vertical_sensor_from_accel_norm;
+
+                                        // GYROSCOPE INCLINATION ANGLE
+                                        angular_velocity_body_matrix_0_0 = 0;
+                                        angular_velocity_body_matrix_0_1 = -gyro_raw_z;
+                                        angular_velocity_body_matrix_0_2 = gyro_raw_y;
+                                        angular_velocity_body_matrix_1_0 = gyro_raw_z;
+                                        angular_velocity_body_matrix_1_1 = 0;
+                                        angular_velocity_body_matrix_1_2 = -gyro_raw_x;
+                                        angular_velocity_body_matrix_2_0 = -gyro_raw_y;
+                                        angular_velocity_body_matrix_2_1 = gyro_raw_x;
+                                        angular_velocity_body_matrix_2_2 = 0;
+
+                                        // rotational velocity based on gyroscope readings
+                                        vertical_sensor_dot_from_gyro_0 = -(angular_velocity_body_matrix_0_0 * vertical_sensor_0 + angular_velocity_body_matrix_0_1 * vertical_sensor_1 + angular_velocity_body_matrix_0_2 * vertical_sensor_2);
+                                        vertical_sensor_dot_from_gyro_1 = -(angular_velocity_body_matrix_1_0 * vertical_sensor_0 + angular_velocity_body_matrix_1_1 * vertical_sensor_1 + angular_velocity_body_matrix_1_2 * vertical_sensor_2);
+                                        vertical_sensor_dot_from_gyro_2 = -(angular_velocity_body_matrix_2_0 * vertical_sensor_0 + angular_velocity_body_matrix_2_1 * vertical_sensor_1 + angular_velocity_body_matrix_2_2 * vertical_sensor_2);
+
+                                        // rotational velocity based on difference to accelerometer estimate
+                                        vertical_sensor_dot_from_accel_0 = -alpha * (vertical_sensor_0 - vertical_sensor_from_accel_0);
+                                        vertical_sensor_dot_from_accel_1 = -alpha * (vertical_sensor_1 - vertical_sensor_from_accel_1);
+                                        vertical_sensor_dot_from_accel_2 = -alpha * (vertical_sensor_2 - vertical_sensor_from_accel_2);
+
+                                        // combine the two estimates
+                                        vertical_sensor_dot_0 = vertical_sensor_dot_from_gyro_0 + vertical_sensor_dot_from_accel_0;
+                                        vertical_sensor_dot_1 = vertical_sensor_dot_from_gyro_1 + vertical_sensor_dot_from_accel_1;
+                                        vertical_sensor_dot_2 = vertical_sensor_dot_from_gyro_2 + vertical_sensor_dot_from_accel_2;
+
+                                        // integrate rotational velocity
+                                        vertical_sensor_0 = vertical_sensor_0 + deltaTime * vertical_sensor_dot_0;
+                                        vertical_sensor_1 = vertical_sensor_1 + deltaTime * vertical_sensor_dot_1;
+                                        vertical_sensor_2 = vertical_sensor_2 + deltaTime * vertical_sensor_dot_2;
+
+                                        // normalize after integration
+                                        vertical_sensor_norm = Math.sqrt(vertical_sensor_0 * vertical_sensor_0 + vertical_sensor_1 * vertical_sensor_1 + vertical_sensor_2 * vertical_sensor_2);
+                                        vertical_sensor_0 = vertical_sensor_0 / vertical_sensor_norm;
+                                        vertical_sensor_1 = vertical_sensor_1 / vertical_sensor_norm;
+                                        vertical_sensor_2 = vertical_sensor_2 / vertical_sensor_norm;
+
+                                        // calculate inclination angles
+                                        inclination_angle = Math.acos(vertical_sensor_0 * sensor_axis_sensor_0 + vertical_sensor_1 * sensor_axis_sensor_1 + vertical_sensor_2 * sensor_axis_sensor_2);
+                                        inclination_angle_from_accel = Math.acos(vertical_sensor_from_accel_0 * sensor_axis_sensor_0 + vertical_sensor_from_accel_1 * sensor_axis_sensor_1 + vertical_sensor_from_accel_2 * sensor_axis_sensor_2);
+                                        // convert to degrees
+                                        inclination_angle = Math.toDegrees(inclination_angle);
+                                        inclination_angle_from_accel = Math.toDegrees(inclination_angle_from_accel);
+
+                                        if (inclination_angle > threshold && feedback_toggle == 1){
+                                            motor_status = 1;
+                                            //board.getModule(Haptic.class).startBuzzer;
+                                            //metawear.getModule(Haptic.class).startBuzzer((short));
+                                        }
+                                        else{
+                                            motor_status = 0;
+                                        }
+
+                                        csv_entry = csv_entry + time_stamp + "," + inclination_angle + "," + feedback_toggle + "," +
+                                                motor_status + "," + inclination_angle_from_accel + "," + threshold + "," + alpha + "," + accel_string_x + "," + accel_string_y + "," + accel_string_z
+                                                + "," + gyro_string_x + "," + gyro_string_y + "," + gyro_string_z + "\n";
+                                    }
+                                }
+                            });
+                        }
+                    }).continueWith(new Continuation<Route, Void>() {
+                        @Override
+                        public Void then(Task<Route> task) throws Exception {
+                            gyroscope.angularVelocity().start();
+                            gyroscope.start();
+                            return null;
+                        }
+                    });
+                }
+                else{
+                    Log.i("MainActivity","Stopped");
+                    ProgramState_status = false;
+                    accelerometer.stop();
+                    accelerometer.acceleration().stop();
+                    gyroscope.stop();
+                    gyroscope.angularVelocity().stop();
+                    ProgramState_text.setText("Saved previous data, Ready to Start");
+
+                    filename = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime()); //.getTime());
+                    year = Calendar.getInstance().get(Calendar.YEAR);
+                    month = Calendar.getInstance().get(Calendar.MONTH);
+                    day = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
+
+                    filename = filename.replaceAll("[^a-zA-Z0-9]", "");
+                    file = new File(ctx.getExternalFilesDir(null), filename);
+                    try {
+                        OutputStream os = new FileOutputStream(file);
+                        os.write(csv_entry.getBytes());
+                        os.close();
+                        Log.i("MainActivity", "File is created as..." + filename);
+                    } catch (IOException e) {
+                        Log.i("MainActivity", "File NOT created ...!");
+                        e.printStackTrace();
+                    }
+                    /*csv_entry = null;
+                    csv_entry = "time" + "," + "inclination angle" + "," + "feedback toggle" + "," + "motor status" + "," + "inclination angle from accelerometers"
+                            + "," + "threshold" + "," + "alpha" + "," + "accelerometer_x" + "," + "accelerometer_y" + "," + "acceleromter_z" + "," + "gyroscope_x" + "," + "gyroscope_y"
+                            + "," + "gyroscope_z" + "\n" + "sec" + "," + "deg" + "," + "binary" + "," + "binary" + "," + "deg" + "," + "deg" + "," + " " +
+                            "," + "g" + "," + "g" + "," + "g" + "," + "deg/sec" + "," + "deg/sec" + "," + "deg/sec" + "\n";
+                    ProgramState_text.setText("Data Saved and Cleared");*/
+                }
+            }
+        });
+        /*ProgramState.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton button, boolean isChecked){
                 if(isChecked){
@@ -416,7 +614,7 @@ public class DeviceSetupActivityFragment extends Fragment implements ServiceConn
                     ProgramState.setText("Data Saved and Cleared");
                 }
             }
-        });
+        });*/
     }
 
     @Override
