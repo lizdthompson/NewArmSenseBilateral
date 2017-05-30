@@ -84,9 +84,9 @@
         android:layout_height="wrap_content"
         android:ems="10"
         android:layout_below="@+id/Threshold_L_text"
-        android:layout_toEndOf="@+id/Threshold_L_text"
         android:layout_alignStart="@+id/Threshold_L_text"
-        android:cursorVisible="false"/>
+        android:cursorVisible="false"
+        android:layout_alignEnd="@+id/Threshold_L_text" />
     <!--android:text="enter subject code" android:inputType="text"-->
 
     <EditText
@@ -163,6 +163,16 @@
         android:cursorVisible="false"/>
     <!--android:text="enter trial type" android:inputType="text"-->
 
+    <TextView
+        android:id="@+id/FileName_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Waiting for file name input"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_marginTop="24dp"
+        android:layout_below="@+id/TrialType"
+        android:layout_centerHorizontal="true" />
+
     <!--<Spinner
         android:id="@+id/trial_number"
         android:layout_width="wrap_content"
@@ -180,8 +190,8 @@
         android:layout_height="wrap_content"
         android:textOff = "Start"
         android:textOn= "Stop"
-        android:layout_marginTop="63dp"
-        android:layout_below="@+id/TrialType"
+        android:layout_marginTop="30dp"
+        android:layout_below="@+id/FileName_text"
         android:layout_centerHorizontal="true" />
 
     <TextView
